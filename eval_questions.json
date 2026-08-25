@@ -1,0 +1,21 @@
+{
+  "_comment": "Evaluation set for RAGLab. Edit these to match whatever document is indexed. 'keywords' are terms a correct answer should contain (case-insensitive); 'expected_source' (optional) is the document stem the best chunk should come from. The questions below target the CMP5366 MLOps report (AnushDatabaseandMl.pdf) — index that document, then run: venv/bin/python evaluate.py",
+  "questions": [
+    {"question": "What tools and technologies are used in the MLOps pipeline?",
+     "keywords": ["Airflow", "MariaDB", "Redis", "Great Expectations", "MLflow", "FastAPI"]},
+    {"question": "What machine learning model is used for prediction?",
+     "keywords": ["Random Forest"]},
+    {"question": "How is the trained model deployed?",
+     "keywords": ["FastAPI", "API"]},
+    {"question": "How is sensitive mental health data protected?",
+     "keywords": ["k-anonymity", "encrypt"]},
+    {"question": "What is used for data validation in the pipeline?",
+     "keywords": ["Great Expectations"]},
+    {"question": "Which three candidate datasets were considered?",
+     "keywords": ["Heart Attack", "Flight", "Student Depression"]},
+    {"question": "Why was the Student Depression dataset chosen?",
+     "keywords": ["social", "preprocessing"]},
+    {"question": "What is used for experiment tracking?",
+     "keywords": ["MLflow"]}
+  ]
+}

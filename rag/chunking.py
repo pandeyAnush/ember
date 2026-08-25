@@ -38,44 +38,57 @@ class FixedSizeChunker(ChunkingStrategy):
 
 
 class SentenceChunker(ChunkingStrategy):
-    """Smarter: split by sentences, then group into target size."""
-    
-    def __init__(self, target_chunk_size: int = 512):
+    """Smarter: split by sentences, group into target size, with overlap.
+
+    `overlap` carries the last ~N characters (whole trailing sentences) of each
+    chunk into the start of the next one, so a fact that straddles a chunk
+    boundary still appears whole in at least one chunk — improving retrieval
+    recall.
+    """
+
+    def __init__(self, target_chunk_size: int = 512, overlap: int = 80):
         self.target_chunk_size = target_chunk_size
-    
+        self.overlap = overlap
+
     def chunk(self, text: str, source: str) -> List[Dict]:
-        # Split by sentence (simple regex - not perfect but works)
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+
         chunks = []
-        current_chunk = ""
+        current = []        # sentences in the current chunk
+        current_len = 0
         chunk_id = 0
-        
+
+        def flush():
+            nonlocal chunk_id
+            content = " ".join(current).strip()
+            if content:
+                chunks.append({
+                    "content": content,
+                    "source": source,
+                    "chunk_id": chunk_id,
+                    "strategy": "sentence",
+                })
+                chunk_id += 1
+
         for sentence in sentences:
-            # If adding this sentence doesn't exceed target, add it
-            if len(current_chunk) + len(sentence) < self.target_chunk_size:
-                current_chunk += " " + sentence
+            # `not current` guarantees an oversized single sentence still forms a chunk
+            if current_len + len(sentence) < self.target_chunk_size or not current:
+                current.append(sentence)
+                current_len += len(sentence) + 1
             else:
-                # Save current chunk and start a new one
-                if current_chunk.strip():
-                    chunks.append({
-                        "content": current_chunk.strip(),
-                        "source": source,
-                        "chunk_id": chunk_id,
-                        "strategy": "sentence"
-                    })
-                    chunk_id += 1
-                current_chunk = sentence
-        
-        # Don't forget the last chunk
-        if current_chunk.strip():
-            chunks.append({
-                "content": current_chunk.strip(),
-                "source": source,
-                "chunk_id": chunk_id,
-                "strategy": "sentence"
-            })
-        
+                flush()
+                # Seed the next chunk with the trailing sentences (up to `overlap`
+                # chars) so context carries over the boundary.
+                carry, clen = [], 0
+                for s in reversed(current):
+                    if clen + len(s) > self.overlap:
+                        break
+                    carry.insert(0, s)
+                    clen += len(s) + 1
+                current = carry + [sentence]
+                current_len = sum(len(s) + 1 for s in current)
+
+        flush()
         return chunks
 
 

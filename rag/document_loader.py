@@ -8,6 +8,19 @@ try:
 except ImportError:
     HAS_PDF = False
 
+# PyMuPDF extracts far cleaner text than PyPDF2 (better spacing, layout, and it
+# handles complex/large PDFs where PyPDF2 returns almost nothing). Preferred when
+# available; PyPDF2 stays as a fallback.
+try:
+    import pymupdf as _fitz  # PyMuPDF >= 1.24 exposes the `pymupdf` module name
+    HAS_PYMUPDF = True
+except ImportError:
+    try:
+        import fitz as _fitz  # older PyMuPDF
+        HAS_PYMUPDF = True
+    except ImportError:
+        HAS_PYMUPDF = False
+
 try:
     from docx import Document
     HAS_DOCX = True
@@ -32,21 +45,32 @@ class DocumentLoader:
             return ""
 
     def load_pdf(self, file_path: str) -> str:
-        """Read text from a PDF file."""
-        if not HAS_PDF:
-            print("PyPDF2 not installed. Install with: pip install PyPDF2")
-            return ""
+        """Read text from a PDF. Prefers PyMuPDF (cleaner extraction); falls back
+        to PyPDF2 if PyMuPDF is unavailable or returns too little text."""
+        text = ""
 
-        try:
-            text = ""
-            with open(file_path, 'rb') as f:
-                reader = PyPDF2.PdfReader(f)
-                for page in reader.pages:
-                    text += page.extract_text() + "\n"
-            return text
-        except Exception as e:
-            print(f"Error reading PDF {file_path}: {e}")
-            return ""
+        # Preferred: PyMuPDF
+        if HAS_PYMUPDF:
+            try:
+                doc = _fitz.open(file_path)
+                text = "\n".join(page.get_text() for page in doc)
+                doc.close()
+            except Exception as e:
+                print(f"PyMuPDF failed on {file_path} ({e}); trying PyPDF2")
+                text = ""
+
+        # Fallback: PyPDF2 (also used if PyMuPDF extracted almost nothing)
+        if len(text.strip()) < 50 and HAS_PDF:
+            try:
+                with open(file_path, 'rb') as f:
+                    reader = PyPDF2.PdfReader(f)
+                    text = "\n".join((page.extract_text() or "") for page in reader.pages)
+            except Exception as e:
+                print(f"Error reading PDF {file_path}: {e}")
+
+        if not text.strip():
+            print(f"⚠️  No extractable text from {file_path} (likely a scanned/image PDF)")
+        return text
 
     def load_docx(self, file_path: str) -> str:
         """Read text from a DOCX file."""

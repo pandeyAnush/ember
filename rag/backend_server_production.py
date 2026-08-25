@@ -133,8 +133,10 @@ def _ensure_models():
         evaluation_logger = EvaluationLogger()
 
     if chunker is None:
-        # Larger chunks (512) give the reranker/LLM more context per hit
-        chunker = SentenceChunker(target_chunk_size=512)
+        # Chunk size is tunable via RAGLAB_CHUNK_SIZE for experimentation
+        # (default 512 — larger chunks give the reranker/LLM more context per hit)
+        size = int(os.environ.get("RAGLAB_CHUNK_SIZE", "512"))
+        chunker = SentenceChunker(target_chunk_size=size)
 
 
 def _build_or_load_store(force_rebuild=False):

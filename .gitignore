@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# OS
+.DS_Store
+
+# RAG artifacts (regenerated at runtime)
+vector_store_production/
+evaluation_log.jsonl
+rag_results.jsonl
+
+# Large test data (keep small .txt fixtures, ignore heavy PDFs)
+data/*.pdf

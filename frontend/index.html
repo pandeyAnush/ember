@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAGLab - Retrieval-Augmented Generation Interface</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        .scrollable {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.35s ease-out;
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- 3D surface system --------------------------------------------- */
+        /* Layered shadows (contact + ambient + depth) instead of one flat shadow,
+           plus a hairline top highlight, is what reads as "raised" rather than "flat with a shadow". */
+        .card-3d {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            box-shadow:
+                0 1px 1px rgba(15, 23, 42, 0.03),
+                0 4px 10px rgba(15, 23, 42, 0.05),
+                0 14px 28px -8px rgba(15, 23, 42, 0.10);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card-3d:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 2px 2px rgba(15, 23, 42, 0.04),
+                0 8px 16px rgba(15, 23, 42, 0.06),
+                0 22px 40px -12px rgba(15, 23, 42, 0.14);
+        }
+
+        .card-3d-tint {
+            border: 1px solid rgba(15, 23, 42, 0.05);
+            box-shadow:
+                0 1px 1px rgba(15, 23, 42, 0.02),
+                0 6px 14px -4px rgba(15, 23, 42, 0.10);
+        }
+
+        /* Bubble/panel that sits *into* the page slightly, for contrast against card-3d */
+        .inset-well {
+            background: #f8fafc;
+            border: 1px solid rgba(15, 23, 42, 0.05);
+            box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+
+        /* "Keycap" button: a solid drop edge underneath that compresses on press,
+           the classic trick for making a flat gradient read as a physical, pressable object. */
+        .btn-3d {
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.4) inset,
+                0 4px 0 0 #b45309,
+                0 8px 16px -4px rgba(180, 83, 9, 0.45);
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .btn-3d:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.4) inset,
+                0 1px 0 0 #b45309,
+                0 2px 6px -2px rgba(180, 83, 9, 0.45);
+        }
+
+        .btn-3d:disabled {
+            box-shadow: 0 2px 0 0 rgba(100, 116, 139, 0.4);
+        }
+
+        .header-glass {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .logo-3d {
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.5) inset,
+                0 3px 0 0 #b45309,
+                0 6px 12px -2px rgba(180, 83, 9, 0.4);
+        }
+
+        .ambient-blob {
+            position: fixed;
+            border-radius: 9999px;
+            filter: blur(70px);
+            pointer-events: none;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900 min-h-screen">
+    <!-- Soft ambient light blobs behind everything, for depth without adding visual noise -->
+    <div class="ambient-blob w-[480px] h-[480px] bg-amber-200/40 -top-40 -left-32"></div>
+    <div class="ambient-blob w-[420px] h-[420px] bg-blue-200/30 top-1/3 -right-32"></div>
+    <div class="ambient-blob w-[380px] h-[380px] bg-purple-200/25 bottom-0 left-1/4"></div>
+
+    <div id="root" class="relative z-10"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        const FILE_ICONS = { '.pdf': '📕', '.docx': '📘', '.doc': '📘', '.txt': '📄' };
+
+        function RAGLabInterface() {
+            const [question, setQuestion] = useState('');
+            const [response, setResponse] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [history, setHistory] = useState([]);
+            const [documents, setDocuments] = useState([]);
+            const [uploading, setUploading] = useState(false);
+            const [uploadNotice, setUploadNotice] = useState(null);
+            const messagesEndRef = useRef(null);
+            const fileInputRef = useRef(null);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            useEffect(() => {
+                scrollToBottom();
+            }, [history]);
+
+            const fetchDocuments = async () => {
+                try {
+                    const res = await fetch('http://127.0.0.1:5050/documents');
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    setDocuments(data.files || []);
+                } catch (err) {
+                    console.error('Could not fetch documents:', err);
+                }
+            };
+
+            useEffect(() => {
+                fetchDocuments();
+            }, []);
+
+            const handleUploadClick = () => fileInputRef.current?.click();
+
+            const handleFileUpload = async (e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
+
+                setUploading(true);
+                setUploadNotice(null);
+
+                const formData = new FormData();
+                files.forEach((f) => formData.append('files', f));
+
+                try {
+                    const res = await fetch('http://127.0.0.1:5050/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+                    setUploadNotice({ type: 'success', text: data.message });
+                    await fetchDocuments();
+                } catch (err) {
+                    setUploadNotice({ type: 'error', text: err.message || 'Upload failed' });
+                } finally {
+                    setUploading(false);
+                    e.target.value = '';
+                }
+            };
+
+            const handleQuery = async (e) => {
+                e.preventDefault();
+                if (!question.trim()) return;
+
+                setLoading(true);
+                setError(null);
+                setResponse(null);
+
+                try {
+                    const res = await fetch('http://127.0.0.1:5050/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question }),
+                    });
+
+                    if (!res.ok) throw new Error('Failed to fetch response');
+                    const data = await res.json();
+
+                    setResponse(data);
+                    setHistory([...history, { question, response: data }]);
+                    setQuestion('');
+                } catch (err) {
+                    setError(err.message || 'Something went wrong. Make sure backend is running on http://127.0.0.1:5050');
+                    console.error('Error:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col relative">
+                    {/* Header */}
+                    <div className="header-glass border-b border-slate-200 sticky top-0 z-20">
+                        <div className="max-w-4xl mx-auto px-6 py-4 w-full">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="logo-3d w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-500 rounded-xl flex items-center justify-center">
+                                        <span className="text-lg font-bold text-white">⚡</span>
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-slate-900">RAGLab</h1>
+                                        <p className="text-xs text-slate-500">Retrieval-Augmented Generation System</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        accept=".txt,.pdf,.docx,.doc"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                    />
+                                    <button
+                                        onClick={handleUploadClick}
+                                        disabled={uploading}
+                                        className="card-3d disabled:opacity-50 rounded-full px-4 py-2 text-xs font-semibold text-slate-700 flex items-center gap-2"
+                                    >
+                                        {uploading ? <span className="spin">⚡</span> : '📎'}
+                                        {uploading ? 'Uploading…' : 'Upload docs'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Indexed documents */}
+                            {documents.length > 0 && (
+                                <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollable pb-1">
+                                    {documents.map((doc, i) => (
+                                        <span key={i} className="inset-well flex-shrink-0 rounded-full px-3 py-1 text-xs text-slate-600 flex items-center gap-1.5">
+                                            <span>{FILE_ICONS[doc.file_type] || '📄'}</span>
+                                            {doc.source}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Upload result toast */}
+                            {uploadNotice && (
+                                <div className={`mt-3 text-xs rounded-lg px-3 py-2 ${uploadNotice.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                    {uploadNotice.text}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Main Container */}
+                    <div className="flex-1 flex flex-col max-w-4xl mx-auto px-6 w-full py-8 relative">
+                        {/* Chat History */}
+                        <div className="scrollable space-y-6 mb-8 flex-1 overflow-y-auto">
+                            {history.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center h-full">
+                                    <div className="card-3d w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                                        <span className="text-3xl">🤖</span>
+                                    </div>
+                                    <h2 className="text-xl font-semibold mb-2 text-slate-900">Welcome to RAGLab</h2>
+                                    <p className="text-slate-500 text-sm">Ask a question to get started</p>
+                                </div>
+                            ) : (
+                                history.map((item, idx) => (
+                                    <div key={idx} className="space-y-4 fade-in">
+                                        {/* User Question */}
+                                        <div className="flex justify-end">
+                                            <div className="btn-3d bg-gradient-to-r from-amber-400 to-amber-500 rounded-2xl rounded-tr-none px-4 py-3 max-w-lg">
+                                                <p className="text-sm font-medium text-white">{item.question}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* AI Response */}
+                                        <div className="space-y-3">
+                                            {/* Answer */}
+                                            <div className="card-3d rounded-2xl rounded-tl-none p-4">
+                                                <p className="text-sm text-slate-700 leading-relaxed">{item.response.response}</p>
+                                            </div>
+
+                                            {/* Retrieved Documents */}
+                                            {item.response.retrieved_chunks?.length > 0 && (
+                                                <div className="card-3d rounded-xl p-4">
+                                                    <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">
+                                                        📚 Retrieved Context
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {item.response.retrieved_chunks.map((chunk, i) => (
+                                                            <div key={i} className="inset-well rounded-lg p-2 text-xs">
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <span className="font-semibold text-amber-600">{chunk.source}</span>
+                                                                    <span className="text-slate-400">
+                                                                        {(chunk.similarity * 100).toFixed(1)}% match
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-slate-500 line-clamp-2">{chunk.content.substring(0, 120)}...</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Metrics */}
+                                            {item.response.metrics && (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {/* Generation Metrics */}
+                                                    <div className="card-3d-tint bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3">
+                                                        <p className="text-xs font-semibold text-blue-700 mb-2">Generation Quality</p>
+                                                        <div className="space-y-1 text-xs">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500">Relevance</span>
+                                                                <span className="text-blue-700 font-semibold">
+                                                                    {(item.response.metrics.generation?.relevance * 100).toFixed(0)}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500">Hallucination</span>
+                                                                <span className={item.response.metrics.generation?.has_hallucination ? 'text-red-500' : 'text-emerald-600'}>
+                                                                    {item.response.metrics.generation?.has_hallucination ? '⚠️ Detected' : '✓ None'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500">Response Time</span>
+                                                                <span className="text-blue-700 font-semibold">
+                                                                    {item.response.metrics.generation?.generation_time?.toFixed(2)}s
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Retrieval Metrics */}
+                                                    <div className="card-3d-tint bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-3">
+                                                        <p className="text-xs font-semibold text-purple-700 mb-2">Retrieval Quality</p>
+                                                        <div className="space-y-1 text-xs">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500">Avg Similarity</span>
+                                                                <span className="text-purple-700 font-semibold">
+                                                                    {(item.response.metrics.retrieval?.average_similarity * 100).toFixed(0)}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500">Chunks Retrieved</span>
+                                                                <span className="text-purple-700 font-semibold">
+                                                                    {item.response.metrics.retrieval?.num_retrieved}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500">Retrieval Time</span>
+                                                                <span className="text-purple-700 font-semibold">
+                                                                    {item.response.metrics.retrieval?.retrieval_time?.toFixed(3)}s
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Error Message */}
+                        {error && (
+                            <div className="card-3d-tint bg-red-50 border-red-200 rounded-lg p-4 mb-4 flex gap-3">
+                                <span className="text-red-500 flex-shrink-0 text-lg">⚠️</span>
+                                <div>
+                                    <p className="text-sm font-semibold text-red-700">Error</p>
+                                    <p className="text-xs text-red-600">{error}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Input Area */}
+                        <div className="sticky bottom-0 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent pt-4">
+                            <form onSubmit={handleQuery} className="flex gap-3">
+                                <input
+                                    type="text"
+                                    value={question}
+                                    onChange={(e) => setQuestion(e.target.value)}
+                                    placeholder="Ask anything about your documents..."
+                                    disabled={loading}
+                                    className="inset-well flex-1 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/40 disabled:opacity-50 transition text-slate-900 placeholder-slate-400"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={loading || !question.trim()}
+                                    className="btn-3d bg-gradient-to-r from-amber-400 to-amber-500 disabled:from-slate-300 disabled:to-slate-400 text-white font-semibold rounded-full p-3 w-12 h-12 flex items-center justify-center flex-shrink-0"
+                                >
+                                    {loading ? (
+                                        <span className="spin">⚡</span>
+                                    ) : (
+                                        <span>➤</span>
+                                    )}
+                                </button>
+                            </form>
+                            <p className="text-xs text-slate-400 mt-2 text-center">
+                                Backend should be running on http://127.0.0.1:5050
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<RAGLabInterface />, document.getElementById('root'));
+    </script>
+</body>
+</html>

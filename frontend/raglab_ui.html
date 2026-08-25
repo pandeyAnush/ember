@@ -211,27 +211,65 @@
 
             const handleQuery = async (e) => {
                 e.preventDefault();
-                if (!question.trim()) return;
+                const q = question.trim();
+                if (!q) return;
 
                 setLoading(true);
                 setError(null);
-                setResponse(null);
+                setQuestion('');
+
+                // Add a placeholder we fill as the stream arrives (sources first,
+                // then the answer token-by-token, then final metrics).
+                let idx = 0;
+                setHistory(h => {
+                    idx = h.length;
+                    return [...h, { question: q, streaming: true,
+                                    response: { response: '', retrieved_chunks: [], metrics: null } }];
+                });
+                const patch = (fields) => setHistory(h => {
+                    const c = [...h];
+                    if (c[idx]) c[idx] = { ...c[idx], response: { ...c[idx].response, ...fields } };
+                    return c;
+                });
 
                 try {
-                    const res = await fetch(`${API_BASE}/query`, {
+                    const res = await fetch(`${API_BASE}/query-stream`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ question }),
+                        body: JSON.stringify({ question: q }),
                     });
+                    if (!res.ok || !res.body) throw new Error('Failed to fetch response');
 
-                    if (!res.ok) throw new Error('Failed to fetch response');
-                    const data = await res.json();
-                    
-                    setResponse(data);
-                    setHistory([...history, { question, response: data }]);
-                    setQuestion('');
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '', answer = '';
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        let nl;
+                        while ((nl = buffer.indexOf('\n')) >= 0) {
+                            const line = buffer.slice(0, nl).trim();
+                            buffer = buffer.slice(nl + 1);
+                            if (!line) continue;
+                            let evt;
+                            try { evt = JSON.parse(line); } catch (_) { continue; }
+                            if (evt.type === 'context') {
+                                patch({ retrieved_chunks: evt.retrieved_chunks || [] });
+                            } else if (evt.type === 'token') {
+                                answer += evt.text || '';
+                                patch({ response: answer });
+                            } else if (evt.type === 'done') {
+                                patch({ response: evt.response, retrieved_chunks: evt.retrieved_chunks, metrics: evt.metrics });
+                                setHistory(h => { const c = [...h]; if (c[idx]) c[idx] = { ...c[idx], streaming: false }; return c; });
+                            } else if (evt.type === 'error') {
+                                throw new Error(evt.error || 'stream error');
+                            }
+                        }
+                    }
                 } catch (err) {
                     setError(err.message || 'Something went wrong. Make sure backend is running on http://127.0.0.1:5050');
+                    setHistory(h => { const c = [...h]; if (c[idx]) c[idx] = { ...c[idx], streaming: false }; return c; });
                     console.error('Error:', err);
                 } finally {
                     setLoading(false);
@@ -338,7 +376,10 @@
                                         <div className="space-y-3">
                                             {/* Answer */}
                                             <div className="bg-slate-800 rounded-2xl rounded-tl-none p-4 border border-slate-700">
-                                                <p className="text-sm text-slate-300 leading-relaxed">{item.response.response}</p>
+                                                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                                    {item.response.response || (item.streaming ? 'Retrieving & thinking…' : '')}
+                                                    {item.streaming && item.response.response ? <span className="animate-pulse">▊</span> : null}
+                                                </p>
                                             </div>
 
                                             {/* Retrieved Documents */}

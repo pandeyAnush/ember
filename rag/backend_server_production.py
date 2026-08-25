@@ -6,7 +6,7 @@ Production Flask Backend with:
 - Structured JSON output with metrics
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import sys
@@ -275,12 +275,38 @@ def query():
         )
         
         return jsonify(result)
-        
+
     except Exception as e:
         print(f"❌ Query error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/query-stream', methods=['POST'])
+def query_stream():
+    """Streaming query: newline-delimited JSON events (context → tokens → done)
+    so the UI shows sources immediately and streams the answer token-by-token."""
+    data = request.json or {}
+    question = (data.get('question') or '').strip()
+    if not question:
+        return jsonify({"error": "Question is required"}), 400
+    if not rag_pipeline:
+        return jsonify({"error": "RAG Pipeline not initialized"}), 500
+
+    def generate():
+        try:
+            for event in rag_pipeline.query_stream(question,
+                                                   num_initial_retrieval=10,
+                                                   num_final_chunks=3):
+                yield json.dumps(event) + "\n"
+        except Exception as e:
+            print(f"❌ Stream error: {e}")
+            yield json.dumps({"type": "error", "error": str(e)}) + "\n"
+
+    # X-Accel-Buffering off + text/plain keeps tokens flowing without buffering
+    return Response(generate(), mimetype='application/x-ndjson',
+                    headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 
 @app.route('/documents', methods=['GET'])

@@ -122,6 +122,53 @@ Answer concisely, using the context above."""
                 "status": "error"
             }
     
+    def generate_with_context_stream(self, question: str, context: str):
+        """Same as generate_with_context but STREAMS the answer token-by-token.
+        Yields text pieces as they are produced by Ollama. Uses the identical
+        system/user prompt so streamed answers match the non-streamed ones."""
+        system_prompt = """You answer questions about the user's documents using ONLY the provided context.
+
+Rules:
+- Answer immediately and confidently. The first sentence must be the answer itself.
+- Use ONLY the context. NEVER add tools, facts, names, or examples from your own knowledge or from "typical" cases.
+- Do NOT hedge or second-guess. Do not discuss whether the context is "explicit" or "sufficient" — if the context states something, report it plainly as fact.
+- Do NOT narrate reasoning or refer to "Document 1/2/3", "the context", or "the pipeline mentioned". Just answer.
+- For broad or "tell me about / summarise / what is this about" questions, ALWAYS give your best short overview synthesised from whatever the context contains. Never refuse a summary.
+- Be concise: a short paragraph or a tight bullet list, no preamble.
+- Reply "The document doesn't cover that." ONLY when the question is about a completely different topic with nothing related in the context. When in doubt, answer."""
+
+        user_prompt = f"""Context:
+{context}
+
+Question: {question}
+
+Answer concisely, using the context above."""
+
+        with requests.post(
+            f"{self.base_url}/api/generate",
+            json={
+                "model": self.model,
+                "prompt": user_prompt,
+                "system": system_prompt,
+                "stream": True,
+                "temperature": self.temperature,
+                "top_p": 0.9,
+                "top_k": 40,
+            },
+            stream=True,
+            timeout=180,
+        ) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                piece = data.get("response", "")
+                if piece:
+                    yield piece
+                if data.get("done"):
+                    break
+
     def check_hallucination(self, response: str, context: str) -> Dict[str, Any]:
         """
         Check if response contains potential hallucinations

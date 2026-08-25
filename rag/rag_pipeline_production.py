@@ -231,6 +231,105 @@ class ProductionRAGPipeline:
         return result
 
 
+    def query_stream(self, question, num_initial_retrieval=10, num_final_chunks=3):
+        """Streaming variant of query(). A generator that yields event dicts:
+          {"type": "context", ...}  once, with retrieved chunks + retrieval metrics
+          {"type": "token", "text": ...}  many times, as the answer is generated
+          {"type": "done", ...}  once, with the full response and final metrics
+        Lets the UI show sources immediately and stream the answer token-by-token."""
+        import numpy as np
+        pipeline_start = time.time()
+
+        # 1. Retrieve
+        retrieval_start = time.time()
+        query_embedding = self.embedding_generator.embed_text(question, is_query=True)
+        retrieved_results = self.retriever.vector_store.search(query_embedding, k=num_initial_retrieval)
+        retrieval_time = time.time() - retrieval_start
+        retrieved_docs = [r["content"] for r in retrieved_results]
+        initial_scores = [r.get("similarity", 0) for r in retrieved_results]
+        avg_initial_similarity = sum(initial_scores) / len(initial_scores) if initial_scores else 0
+
+        # 2. Rerank
+        try:
+            reranked_docs, rerank_scores, rerank_indices = self.reranker.rerank(
+                question, retrieved_docs, top_k=num_final_chunks)
+        except Exception:
+            reranked_docs = retrieved_docs[:num_final_chunks]
+            rerank_indices = list(range(min(num_final_chunks, len(retrieved_results))))
+
+        retrieved_chunks = []
+        for idx in rerank_indices:
+            if idx < len(retrieved_results):
+                r = retrieved_results[idx]
+                retrieved_chunks.append({
+                    "content": r.get("content", ""),
+                    "source": r.get("source", "Unknown"),
+                    "similarity": float(r.get("similarity", 0)),
+                })
+
+        # Emit context + retrieval metrics up front (UI shows sources immediately)
+        yield {
+            "type": "context",
+            "retrieved_chunks": retrieved_chunks,
+            "metrics": {"retrieval": {
+                "num_retrieved": len(retrieved_docs),
+                "average_similarity": float(avg_initial_similarity),
+                "retrieval_time": retrieval_time,
+            }},
+        }
+
+        # 3. Stream generation
+        context = "\n---\n".join([f"[Document {i+1}]\n{doc}" for i, doc in enumerate(reranked_docs)])
+        generation_start = time.time()
+        full = ""
+        try:
+            for piece in self.llm_generator.generate_with_context_stream(question, context):
+                full += piece
+                yield {"type": "token", "text": piece}
+        except Exception as e:
+            err = f"ERROR during generation: {e}"
+            full = full or err
+            yield {"type": "token", "text": err}
+        generation_time = time.time() - generation_start
+
+        # 4. Final metrics
+        hallucination = self.llm_generator.check_hallucination(full, context)
+        try:
+            resp_embedding = self.embedding_generator.embed_text(full, is_query=False)
+            denom = (np.linalg.norm(query_embedding) * np.linalg.norm(resp_embedding)) + 1e-9
+            relevance = max(0.0, min(1.0, float(np.dot(query_embedding, resp_embedding) / denom)))
+        except Exception:
+            relevance = self.llm_generator.calculate_relevance(full, question)
+
+        result = {
+            "question": question,
+            "response": full,
+            "retrieved_chunks": retrieved_chunks,
+            "metrics": {
+                "retrieval": {
+                    "num_retrieved": len(retrieved_docs),
+                    "average_similarity": float(avg_initial_similarity),
+                    "retrieval_time": retrieval_time,
+                },
+                "generation": {
+                    "generation_time": generation_time,
+                    "response_length": len(full),
+                    "has_hallucination": hallucination.get("has_hallucination", False),
+                    "relevance": float(relevance),
+                },
+                "total_time": time.time() - pipeline_start,
+            },
+            "status": "success",
+        }
+        if self.evaluation_logger and hasattr(self.evaluation_logger, "log_result"):
+            try:
+                self.evaluation_logger.log_result(result)
+            except Exception:
+                pass
+
+        yield {"type": "done", **result}
+
+
 if __name__ == "__main__":
     print("Production RAG Pipeline Module")
     print("Use with retriever, embedding_generator, reranker, and llm_generator")

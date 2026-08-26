@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAGLab - Retrieval-Augmented Generation Interface</title>
+    <title>Ember — your documents, understood</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Progressive enhancement: if Google Fonts is blocked, the fallback stack
+         below keeps the app clean. Core scripts stay vendored (never blocked). -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <!-- Libraries are vendored locally under frontend/vendor/ and served by the
          Flask backend, so the app needs NO internet/CDN and renders in any
          browser (no ad-blocker/extension can strip the scripts). -->
@@ -13,6 +18,28 @@
          <script type="text/babel"> block throws "Unexpected token '<'" -->
     <script src="/vendor/babel.min.js"></script>
     <script src="/vendor/tailwind.js"></script>
+    <!-- Ember palette: remap Tailwind's slate → warm charcoal and yellow → coral
+         so the whole app is recoloured cohesively (a warm glow in the dark). -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+            colors: {
+              slate: {
+                900: '#17130F', 800: '#211B16', 700: '#33291F', 600: '#4B3D30',
+                500: '#8C7C6E', 400: '#B5A89C', 300: '#D9CFC4', 200: '#EAE2D8', 100: '#F3ECE4',
+              },
+              yellow: { 300: '#F6B69B', 400: '#F3A585', 500: '#F08E6E', 600: '#E07A5F', 700: '#C1553A' },
+              blue:   { 300: '#F3A585', 700: '#5A4636', 800: '#2A211A', 900: '#241C15' },
+              purple: { 300: '#9FC7AC', 700: '#3A4A3F', 800: '#232A25', 900: '#1E241F' },
+              green:  { 400: '#8FB89C' },
+              red:    { 200: '#F3C3B4', 300: '#EAA891', 700: '#7A3A2A', 900: '#2E1712' },
+            },
+          },
+        },
+      };
+    </script>
     <style>
         * {
             margin: 0;
@@ -21,29 +48,35 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            letter-spacing: -0.01em;
+            background:
+              radial-gradient(900px 480px at 82% -8%, rgba(240,142,110,0.14), transparent 60%),
+              radial-gradient(760px 460px at 6% 8%, rgba(233,164,92,0.08), transparent 60%),
+              #17130F;
+            min-height: 100vh;
         }
-        
+
         .scrollable {
             scrollbar-width: thin;
-            scrollbar-color: #475569 #1e293b;
+            scrollbar-color: #4B3D30 #211B16;
         }
-        
+
         .scrollable::-webkit-scrollbar {
             width: 8px;
         }
-        
+
         .scrollable::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #211B16;
         }
-        
+
         .scrollable::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #4B3D30;
             border-radius: 4px;
         }
-        
+
         .scrollable::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #6A5645;
         }
         
         @keyframes fadeIn {
@@ -65,21 +98,21 @@
         }
         
         .upload-zone {
-            border: 2px dashed #64748b;
-            border-radius: 8px;
+            border: 1.5px dashed #4B3D30;
+            border-radius: 16px;
             padding: 20px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.25s;
         }
-        
+
         .upload-zone:hover {
-            border-color: #fbbf24;
-            background-color: rgba(251, 191, 36, 0.1);
+            border-color: #F08E6E;
+            background-color: rgba(240, 142, 110, 0.08);
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-black text-white">
+<body class="text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -282,12 +315,12 @@
                     <div className="border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
                         <div className="max-w-4xl mx-auto px-6 py-4 w-full">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-lg font-bold text-black">⚡</span>
+                                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg" style={{boxShadow:'0 8px 20px -6px rgba(240,142,110,0.6)'}}>
+                                    <svg viewBox="0 0 24 24" fill="#241812" className="w-5 h-5"><path d="M12 2c1.2 3.2-.6 4.8-2 6.4C8.2 10.6 7 12.6 7 15a5 5 0 0 0 10 0c0-1.8-.8-3.2-1.6-4.2-.5 1-1.3 1.6-2.2 1.6 1-2.4.3-4.6-1.2-6.4C11.2 5 10.8 3.4 12 2z"/></svg>
                                 </div>
                                 <div>
-                                    <h1 className="text-2xl font-bold">RAGLab</h1>
-                                    <p className="text-xs text-slate-400">Retrieval-Augmented Generation System</p>
+                                    <h1 className="text-2xl font-bold tracking-tight">Ember</h1>
+                                    <p className="text-xs text-slate-400">Your documents, understood — locally</p>
                                 </div>
                                 <button
                                     onClick={() => setShowDocs(!showDocs)}
@@ -356,11 +389,9 @@
                         <div className="scrollable space-y-6 mb-8 flex-1 overflow-y-auto">
                             {history.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-                                    <div className="w-16 h-16 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 rounded-full flex items-center justify-center mb-4">
-                                        <span className="text-3xl">🤖</span>
-                                    </div>
-                                    <h2 className="text-xl font-semibold mb-2">Welcome to RAGLab</h2>
-                                    <p className="text-slate-400 text-sm">Ask a question to get started</p>
+                                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-5" style={{background:'radial-gradient(120% 120% at 32% 26%, #FFE8B0 0%, #F6A65E 30%, #E9744A 62%, #C2452C 100%)', boxShadow:'0 18px 40px -14px rgba(224,122,95,0.65), inset -6px -8px 16px rgba(120,30,10,.45), inset 5px 6px 12px rgba(255,225,170,.5)'}}></div>
+                                    <h2 className="text-2xl font-bold mb-2 tracking-tight">Ask Ember anything</h2>
+                                    <p className="text-slate-400 text-sm max-w-xs">It reads your documents and answers with sources — everything stays on your machine.</p>
                                 </div>
                             ) : (
                                 history.map((item, idx) => (

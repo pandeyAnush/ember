@@ -1,17 +1,18 @@
-langchain==0.1.9
-langchain-community==0.0.21
-faiss-cpu==1.13.0
-sentence-transformers>=2.7.0
-requests==2.31.0
+# --- Core RAG ---
+faiss-cpu==1.13.0              # vector index (similarity search)
+sentence-transformers>=2.7.0  # BGE embeddings + cross-encoder reranker
+transformers>=4.30.0
+torch>=2.0.0
 numpy>=1.26.0
-pandas>=2.0.0
 scikit-learn>=1.5.0
-pydantic>=2.7.0
+
+# --- Document loading ---
+pymupdf>=1.24.0               # primary PDF text extraction (clean)
+PyPDF2>=3.0.0                 # PDF fallback
+python-docx>=0.8.11          # .docx support
+
+# --- Web backend ---
 flask>=2.3.0
 flask-cors>=4.0.0
-PyPDF2>=3.0.0
-pymupdf>=1.24.0
-python-docx>=0.8.11
 werkzeug>=2.3.0
-torch>=2.0.0
-transformers>=4.30.0
+requests==2.31.0             # Ollama HTTP API

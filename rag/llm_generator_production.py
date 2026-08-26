@@ -6,6 +6,7 @@ Production LLM Generator using Ollama
 - Reduced hallucinations via prompt engineering
 """
 
+import os
 import requests
 import json
 from typing import Dict, Any
@@ -22,9 +23,12 @@ class ProductionLLMGenerator:
     def __init__(
         self,
         model: str = "llama3.1:8b",  # Hardware-appropriate for 16GB RAM
-        base_url: str = "http://localhost:11434",
+        base_url: str = None,
         temperature: float = 0.3
     ):
+        # OLLAMA_HOST env override (e.g. http://host.docker.internal:11434 in a
+        # container); defaults to the local Ollama server.
+        base_url = base_url or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
         """
         Initialize LLM generator
         

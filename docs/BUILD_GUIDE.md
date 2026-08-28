@@ -10,6 +10,32 @@
 
 ---
 
+## Overview — what Ember is, and how it was built
+
+Ember is a **fully-local Retrieval-Augmented Generation (RAG)** system — a private AI that reads your own documents (PDF, TXT, DOCX) and answers questions about them, running entirely on your own machine with **no cloud services and no API keys**. It is built in two phases. In the **indexing phase**, each document is turned into clean text with PyMuPDF, split into overlapping ~512-character passages by a sentence-aware chunker, filtered to drop noise (tables of contents, reference lists, page numbers), and converted into 1024-dimension "meaning vectors" by the **BGE-large** embedding model; those vectors are stored in a **FAISS** index that is saved to disk — alongside a fingerprint of the documents folder — so restarts are instant and only changed files are re-embedded. In the **query phase**, the user's question is embedded by the same model, the ten nearest passages are retrieved from FAISS, a **cross-encoder reranker** re-scores them and keeps the best three, and those three passages are pasted into a strict prompt that tells a local **Llama 3.1 8B** model (served by **Ollama**) to answer *only* from that context. The answer is streamed back token-by-token to a **React** web interface that also shows the source passages and live quality metrics (relevance, retrieval similarity, a hallucination check, and timing). The whole application is served from a single **Flask** backend at one local URL, with the front-end libraries copied into the project so it needs no internet at all.
+
+Every component is deliberately **local and swappable** — the embedder, reranker, and language model are all open models chosen to fit a 16 GB laptop. The system was built **stage by stage**, each stage tested on its own before the next, and hardened through real debugging: cleaning noisy PDF text, rewriting the prompt so the small model stops hedging, vendoring the web dependencies after a browser extension blocked the CDN, and making uploads and deletes *incremental* so they never re-embed the whole corpus. And quality is not assumed but **measured** — a built-in evaluation harness scores the system on a fixed question set, reaching **92% keyword recall with zero flagged hallucinations** at roughly 8–12 seconds per streamed answer.
+
+### Technologies & tools used
+
+| Layer | Tool / model | Role in Ember |
+|---|---|---|
+| Language | **Python 3** | the whole system is written in Python |
+| Local LLM runtime | **Ollama** | runs the language model on-device, no cloud |
+| Language model | **Llama 3.1 8B** | writes the final, grounded answer |
+| Embeddings | **BGE-large** (`BAAI/bge-large-en-v1.5`) via `sentence-transformers` | turns text into 1024-dim meaning-vectors |
+| Reranker | **cross-encoder** `ms-marco-MiniLM-L-12-v2` | re-scores the shortlist for precision |
+| Vector search | **FAISS** (`IndexFlatL2`) | fast nearest-neighbour search + on-disk index |
+| Text extraction | **PyMuPDF** (primary), **PyPDF2** (fallback), **python-docx** | clean text out of PDF / DOCX / TXT |
+| Web backend | **Flask** + `flask-cors` | serves the UI + API, streams answers (NDJSON) |
+| Web frontend | **React + Babel + Tailwind** (vendored, no CDN) | chat UI, streaming, document panel, metrics |
+| Glue / math | `requests`, `numpy` | calls Ollama's API, vector math |
+| Tooling | **Git**, a `run.sh` launcher, an `evaluate.py` harness | version control, one-command run, quality measurement |
+
+> **In one line:** Python + Ollama (Llama 3.1) + BGE embeddings + a cross-encoder reranker + FAISS + Flask/React — all local, all measurable.
+
+---
+
 ## Part 1 — What is RAG, in plain words
 
 A large language model (LLM) like Llama is a very well-read person who has **no access to your documents** and who will sometimes **confidently make things up** ("hallucinate"). If you ask it "what does *my* report say about data validation?", it can't know — your report wasn't in its training data.

@@ -486,6 +486,112 @@ These are real, and each is a lesson you'll meet in *any* RAG build:
 
 ---
 
+## Part 11 — Appendix: a complete minimal RAG you can run *today*
+
+Everything above explains the real system. This appendix is the opposite: the **smallest possible RAG that actually works**, in one file you can copy, run, and understand in an afternoon. *This exact code was tested end to end — it answers correctly.* Once it runs, you grow it into the full thing using Parts 4–5.
+
+### Step 1 — Set up (3 commands)
+
+```bash
+mkdir mini-rag && cd mini-rag
+python -m venv venv
+venv/bin/pip install sentence-transformers faiss-cpu requests pymupdf
+```
+Also install [Ollama](https://ollama.ai) and pull the model once:
+```bash
+ollama pull llama3.1:8b
+```
+
+### Step 2 — Create `mini_rag.py` (copy this exactly)
+
+```python
+# mini_rag.py — a complete, minimal RAG in one file.
+import sys, re, requests, faiss
+from sentence_transformers import SentenceTransformer
+
+# 1. LOAD: pull text out of a .txt or .pdf
+def load_text(path):
+    if path.endswith(".pdf"):
+        import pymupdf
+        doc = pymupdf.open(path)
+        text = "\n".join(p.get_text() for p in doc); doc.close(); return text
+    return open(path, encoding="utf-8").read()
+
+# 2. CHUNK: split into passages, drop tiny fragments
+def chunk(text, size=500):
+    chunks, cur = [], ""
+    for s in re.split(r'(?<=[.!?])\s+', text):
+        if len(cur) + len(s) < size: cur += " " + s
+        else:
+            if cur.strip(): chunks.append(cur.strip())
+            cur = s
+    if cur.strip(): chunks.append(cur.strip())
+    return [c for c in chunks if len(c) > 40]
+
+# 3. EMBED: text -> vectors (bge-small is small & fast to download)
+print("Loading embedding model (first run downloads it)...")
+embedder = SentenceTransformer("BAAI/bge-small-en-v1.5")
+def embed(texts, is_query=False):
+    if is_query:  # BGE wants a hint on queries
+        texts = ["Represent this sentence for searching relevant passages: " + t for t in texts]
+    return embedder.encode(texts, normalize_embeddings=True).astype("float32")
+
+# 4. INDEX: build the FAISS store from a file you pass on the command line
+path = sys.argv[1] if len(sys.argv) > 1 else "sample.txt"
+chunks = chunk(load_text(path))
+print(f"Indexed {len(chunks)} chunks from {path}")
+vecs = embed(chunks)
+index = faiss.IndexFlatL2(vecs.shape[1]); index.add(vecs)
+
+# 5. ASK: embed the question, find the 3 closest chunks, let Llama answer from them
+def ask(question, k=3):
+    _, ids = index.search(embed([question], is_query=True), k)
+    context = "\n---\n".join(chunks[i] for i in ids[0])
+    prompt = (f"Answer using ONLY this context. If it isn't there, say so.\n\n"
+              f"Context:\n{context}\n\nQuestion: {question}")
+    r = requests.post("http://localhost:11434/api/generate",
+                      json={"model": "llama3.1:8b", "prompt": prompt, "stream": False}, timeout=120)
+    return r.json()["response"]
+
+# 6. LOOP: ask questions until you type 'quit'
+print("Ask a question (or 'quit'):")
+while True:
+    q = input("> ").strip()
+    if q.lower() in ("quit", "exit", ""): break
+    print("\n" + ask(q) + "\n")
+```
+
+### Step 3 — Run it
+
+```bash
+venv/bin/python mini_rag.py yourfile.pdf     # or a .txt file
+```
+```
+Loading embedding model (first run downloads it)...
+Indexed 42 chunks from yourfile.pdf
+Ask a question (or 'quit'):
+> What does the document say about X?
+
+<a grounded answer, using only your document>
+```
+
+**That's a working RAG in ~50 lines.** It does load → chunk → embed → FAISS → retrieve → local LLM. Everything else in this project is making that *better* and *shippable*.
+
+### Step 4 — Grow it into the full system
+
+Add these one at a time (each links back to where it's explained):
+
+1. **Reranking** → retrieve 10, keep the best 3 with a cross-encoder (Part 4.7). *Biggest quality jump.*
+2. **A better embedder** → swap `bge-small` for `bge-large` (Part 4.4).
+3. **Noise filtering** → drop TOC / reference chunks (Part 4.3).
+4. **Persistence** → `faiss.write_index` + reload, so you don't re-embed each run (Part 4.5).
+5. **An eval harness** → score it so you can tune with numbers (Part 4.10).
+6. **A web UI** → wrap it in Flask and stream the answer (Part 5).
+
+Do them in that order and you'll have rebuilt Ember — understanding every line, because you added each one yourself.
+
+---
+
 ### The whole system in one breath
 
 > Extract clean text → chunk it with overlap → drop the noise → embed with BGE → store in FAISS (and cache it) → for each question, embed it, retrieve 10, rerank to 3, and have a local Llama answer *only* from those 3 — streamed, cited, and measured.

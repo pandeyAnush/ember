@@ -544,6 +544,7 @@
                                     type="text"
                                     value={question}
                                     onChange={(e) => setQuestion(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!loading && question.trim()) handleQuery(e); } }}
                                     placeholder="Ask anything about your documents..."
                                     disabled={loading}
                                     className="flex-1 bg-slate-800 border border-slate-700 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 disabled:opacity-50 transition text-white placeholder-slate-400"

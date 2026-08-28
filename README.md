@@ -4,6 +4,8 @@ A **from-scratch, fully-local Retrieval-Augmented Generation system** — a priv
 
 Ask questions about your own PDFs and get grounded, streamed answers with source citations and live quality metrics. Everything runs on your machine: embeddings, vector search, reranking, and generation. **No API keys, no cloud.**
 
+> 📖 **Want to understand — or rebuild — every piece?** See the complete [**Build Guide**](docs/BUILD_GUIDE.md): how RAG works from zero, every stage of this project explained with the code and the *why*, a step-by-step roadmap to build your own, and how to explain it to anyone.
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  Your PDF  →  Chunk  →  Embed  →  FAISS  →  Rerank  →  LLM     │

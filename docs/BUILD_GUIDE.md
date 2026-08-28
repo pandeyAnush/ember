@@ -3,6 +3,7 @@
 > This is the full story of how Ember was built: what every piece does, **why** it's there, and how you could build the same thing yourself, step by step. It assumes you can write basic Python. It does **not** assume you already know what RAG is — we start from zero.
 
 **How to read this:**
+
 - If you want to *understand* the project → read Parts 1–6 in order.
 - If you want to *rebuild it yourself* → follow Part 7 (the roadmap) with Parts 3–5 open beside you.
 - If you need to *explain it to someone* (interview, viva, demo) → Part 8 gives you the talking points.
@@ -20,6 +21,7 @@ A large language model (LLM) like Llama is a very well-read person who has **no 
 That's the whole trick. Everything else is engineering to make the "go find the relevant passages" step fast, accurate, and clean.
 
 Three problems RAG solves at once:
+
 1. **Knowledge** — the model can answer about documents it never trained on.
 2. **Hallucination** — if you tell it "answer *only* from this context," it makes up far less.
 3. **Trust** — because you retrieved specific passages, you can *show the sources*.
@@ -123,6 +125,7 @@ if not text.strip():
 **Concept:** you can't embed a whole 66-page document as one vector — you'd lose all detail. You split it into **chunks** (~a paragraph each). Retrieval then finds the *chunk* that answers the question.
 
 **Two decisions matter:**
+
 - **Chunk size** — too small = no context; too big = imprecise + slow.
 - **Overlap** — if a fact sits exactly on a chunk boundary, it gets cut in half. Overlap copies the last sentence or two of each chunk into the next, so the fact stays whole *somewhere*.
 
@@ -217,6 +220,7 @@ class VectorStore:
 ```
 
 **Two things worth understanding:**
+
 - `IndexFlatL2` is the simplest index: it compares against *every* vector (exact, perfect recall). For millions of vectors you'd use an approximate index, but for a personal RAG, flat is ideal.
 - We convert L2 distance to a 0–1 "similarity" (`1/(1+d)`) just so the UI can show a friendly "% match".
 
@@ -308,6 +312,7 @@ That's RAG. Everything before was building the parts; this is them working in se
 ### 4.10 — Evaluation (making quality a number)
 
 **Concept:** "it feels better" isn't engineering. You need to *measure*. We wrote a small harness (`evaluate.py`) that runs a fixed question set and scores:
+
 - **Keyword recall** — did the answer contain the facts a correct answer should?
 - **Answer relevance** — semantic similarity (BGE) between question and answer.
 - **Retrieval similarity** — how good were the chunks pulled?
@@ -343,6 +348,7 @@ The pipeline is a Python function. To *use* it, wrap it in a web server and give
 ### The backend (`rag/backend_server_production.py`, Flask)
 
 It does four jobs:
+
 1. **Serves the UI** at `/` (so the whole app is one URL — `http://127.0.0.1:5050`).
 2. **Serves the libraries** at `/vendor/*` (React etc. are downloaded into the repo, so the app needs *no internet* — an ad-blocker can't break it).
 3. **Answers questions** at `/query` (all-at-once) and `/query-stream` (token-by-token).
@@ -393,32 +399,38 @@ Putting it all together, here's exactly what happens when you type *"What is use
 Do it in this exact order. Each step is testable on its own before you move on — that's the secret to not drowning.
 
 **Milestone 1 — Ingest & chunk (no ML yet)**
+
 1. `venv`, install `pymupdf`.
 2. Write `load_pdf()` — print the extracted text of a real PDF. *Test: does it look clean?*
 3. Write a sentence chunker — print the chunks. *Test: are they whole sentences, right size?*
 4. Add a noise filter. *Test: are TOC/reference chunks gone?*
 
 **Milestone 2 — Embed & search**
+
 5. `pip install sentence-transformers faiss-cpu`.
 6. Embed the chunks with BGE. *Test: print the vector shape (should be N×1024).*
 7. Put them in a FAISS `IndexFlatL2`. Embed a test question, `search(k=5)`, print the chunks. *Test: are the top hits actually about your question?* — **If yes, you have working retrieval. This is the core.**
 
 **Milestone 3 — Generate**
+
 8. Install Ollama, `ollama pull llama3.1:8b`.
 9. Write the LLM call: paste top chunks into a strict prompt, get an answer. *Test: is it grounded in the chunks?*
 10. Iterate on the prompt until answers are direct and confident.
 
 **Milestone 4 — Sharpen & measure**
+
 11. Add the cross-encoder reranker (retrieve 10 → rerank to 3). *Test: better answers?*
 12. Write the eval harness with ~8 question/keyword pairs. *Now every change is measurable.*
 
 **Milestone 5 — Make it real**
+
 13. Wrap the pipeline in Flask (`/query`).
 14. Add a minimal HTML UI that calls it.
 15. Add persistence (save/load the index + a `data/` manifest).
 16. Add streaming, then upload/delete, then incremental indexing.
 
 **Milestone 6 — Polish**
+
 17. Serve the UI + vendored libs from Flask (one URL, no CDN).
 18. A `run.sh` that frees the port and starts the server.
 19. `git init` and commit. Write a README.
@@ -438,6 +450,7 @@ Pick the altitude for your audience.
 > "I split documents into passages, turn each into a vector that captures its meaning, and store them. When you ask a question I turn *it* into a vector, find the closest passages, re-rank them with a more precise model, and hand the best few to a local LLM with a strict 'answer only from this' prompt. So the answers are grounded in the actual document, with sources."
 
 **The three ideas that make you sound like you *get* it:**
+
 1. **Embeddings put meaning into geometry** — similar meaning = nearby vectors, so search becomes "find the nearest neighbours."
 2. **Retrieve broad, rerank narrow** — fast bi-encoder to shortlist, slow-but-precise cross-encoder to pick the winners.
 3. **The model answers open-book** — RAG's whole job is to make sure the right page is open. Bad answers usually mean bad *retrieval*, not a bad model.

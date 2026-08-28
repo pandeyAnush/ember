@@ -1,6 +1,6 @@
-# ⚡ RAGLab
+# 🔥 Ember
 
-A **from-scratch, fully-local Retrieval-Augmented Generation system** — built to understand every stage of a RAG pipeline by implementing it end to end, with no black-box framework in between.
+A **from-scratch, fully-local Retrieval-Augmented Generation system** — a private AI that reads your documents, built to understand every stage of a RAG pipeline by implementing it end to end, with no black-box framework in between.
 
 Ask questions about your own PDFs and get grounded, streamed answers with source citations and live quality metrics. Everything runs on your machine: embeddings, vector search, reranking, and generation. **No API keys, no cloud.**
 

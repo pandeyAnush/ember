@@ -34,6 +34,13 @@ Every component is deliberately **local and swappable** — the embedder, rerank
 
 > **In one line:** Python + Ollama (Llama 3.1) + BGE embeddings + a cross-encoder reranker + FAISS + Flask/React — all local, all measurable.
 
+### Before you begin — what you'll need
+
+- **Skills:** basic Python — you can write a function and run a script. *No machine-learning background needed:* the models are pre-trained, you just call them.
+- **Hardware:** a laptop with ~**16 GB RAM** and ~**10 GB free disk** (for the models). It runs on CPU; a GPU only makes it faster.
+- **Accounts / keys:** **none.** Everything is free, open-source, and runs locally.
+- **Time:** the minimal version (Part 11) in an **afternoon**; the full system over a **weekend**, one stage at a time.
+
 ---
 
 ## Part 1 — What is RAG, in plain words
@@ -615,6 +622,83 @@ Add these one at a time (each links back to where it's explained):
 6. **A web UI** → wrap it in Flask and stream the answer (Part 5).
 
 Do them in that order and you'll have rebuilt Ember — understanding every line, because you added each one yourself.
+
+---
+
+## Part 12 — Project structure (how to organize your files)
+
+A clean layout keeps the system easy to grow. Here is Ember's — **one module per pipeline stage**, so you can open any file and understand exactly one job (and swap it without touching the rest):
+
+```
+ember/
+├── run.sh                          # start the backend (frees the port first)
+├── requirements.txt                # the Python libraries
+├── evaluate.py                     # the evaluation harness (Part 4.10)
+├── eval_questions.json             # the question set to score against
+├── data/                           # YOUR documents go here (PDF / TXT / DOCX)
+├── vector_store_production/        # saved FAISS index + manifest (auto-created)
+├── frontend/
+│   ├── raglab_ui.html              # the web UI (served at /)
+│   └── vendor/                     # React, Babel, Tailwind (copied in — no CDN)
+└── rag/                            # the pipeline: one file per stage
+    ├── document_loader.py          # 4.1  extract text
+    ├── chunking.py                 # 4.2  chunk into passages
+    ├── embeddings_production.py    # 4.4  embed with BGE
+    ├── vector_store.py             # 4.5  FAISS store + save/load
+    ├── retriever.py                # 4.6  retrieve candidates
+    ├── reranker.py                 # 4.7  cross-encoder rerank
+    ├── llm_generator_production.py # 4.8  generate with Ollama
+    ├── rag_pipeline_production.py  # 4.9  orchestrate the whole query
+    ├── evaluation.py               # 4.10 metrics logging
+    └── backend_server_production.py# 5    Flask: serves the UI + API
+```
+
+> **Tip:** build the `rag/` files in the numbered order — each one is testable on its own (Part 7's roadmap). The backend and frontend come *last*, once the pipeline works from a plain script.
+
+---
+
+## Part 13 — Troubleshooting (the errors you'll actually hit)
+
+Every one of these bit us at least once. Keep this table handy.
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `ModuleNotFoundError` (flask, faiss, …) | You ran the **system** Python | Use `venv/bin/python`, never bare `python` |
+| `Cannot connect to Ollama` | Ollama isn't running | Run `ollama serve`; check `ollama list` shows your model |
+| First query is slow (~20 s) | Ollama loads the model into RAM on the first call | Normal — later queries are much faster |
+| `Address already in use` on start | An old server still holds the port | Run `./run.sh` (it frees the port first), or kill the process using port 5050, then restart |
+| Blank web page, no errors | Library scripts were blocked, or wrong URL | Use the **vendored** libs; open the real URL and hard-reload |
+| `403` on port 5000 (macOS) | AirPlay Receiver squats on port 5000 | Use a different port (Ember uses **5050**) |
+| "The document doesn't cover that" for a topic it *does* cover | Vague question, or retrieval missed | Ask a **specific** question; check the retrieved chunks first |
+| Process killed / out of memory | Too many models + big docs on 16 GB | Use a smaller model or fewer docs; don't re-embed everything |
+| Retrieved chunks are TOC / references | No noise filter | Add the chunk filter (Part 4.3) |
+| Changed the code but nothing changed | The **old** process is still running | Confirm you restarted; verify the new code is what's live |
+
+> **The golden debugging order for a wrong answer:** check **(1) the chunks retrieved → (2) the prompt → (3) the model.** It's almost always #1.
+
+---
+
+## Part 14 — Glossary (every term, in one place)
+
+- **RAG (Retrieval-Augmented Generation)** — giving an LLM the relevant passages from *your* documents before it answers, so the answer is grounded in them.
+- **LLM (Large Language Model)** — the AI that writes the text. Here: Llama 3.1 8B.
+- **Token** — a piece of a word; models read and write in tokens. "Streaming" = sending them one at a time as they're produced.
+- **Embedding** — a list of numbers (a *vector*) that represents the **meaning** of a piece of text.
+- **Vector** — that list of numbers. Similar meaning → vectors that sit near each other.
+- **Dimension** — how long the vector is (BGE-large = **1024** numbers).
+- **Chunk** — a passage of a document (≈ a paragraph) that gets embedded and retrieved.
+- **Overlap** — copying the end of one chunk into the start of the next, so a fact on a boundary isn't split.
+- **Vector store / index** — the structure that finds nearest vectors fast. Here: **FAISS**.
+- **FAISS** — *Facebook AI Similarity Search*, the library doing the nearest-neighbour search.
+- **Retrieval** — finding the chunks closest in meaning to the question.
+- **Bi-encoder** — embeds the question and each chunk **separately** (fast, coarse) — this is the embedding search.
+- **Cross-encoder / reranker** — reads the question and a chunk **together** (slow, precise) — sharpens the shortlist.
+- **Context** — the chunks pasted into the prompt for the LLM to answer from.
+- **Prompt** — the instructions + context sent to the LLM.
+- **Hallucination** — the model stating something that isn't in the context (i.e., made up).
+- **Ollama** — the tool that runs the LLM locally on your own machine.
+- **Manifest** — a fingerprint of your documents folder, used to know when the index must be rebuilt.
+- **Grounded** — an answer that is actually supported by the retrieved text.
 
 ---
 

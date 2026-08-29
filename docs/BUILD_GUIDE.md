@@ -41,6 +41,25 @@ Every component is deliberately **local and swappable** — the embedder, rerank
 - **Accounts / keys:** **none.** Everything is free, open-source, and runs locally.
 - **Time:** the minimal version (Part 11) in an **afternoon**; the full system over a **weekend**, one stage at a time.
 
+### Quick start — how to run and use Ember
+
+*Already have the project (built it, or cloned the repo)? This is the whole run-and-use loop.*
+
+**Run it**
+
+1. Start Ollama and pull the model **once**: run `ollama serve` in a terminal, and `ollama pull llama3.1:8b`.
+2. In the project folder, start the app: `./run.sh` — this frees port 5050 and launches the backend. **Leave this terminal open; it is your server.** Wait for `✅ Production RAGLab Backend Ready!`.
+3. Open **`http://127.0.0.1:5050`** in your browser.
+
+**Use it**
+
+4. **Upload** a document — click the upload area (or open the 📚 **Documents** panel) and choose a PDF / TXT / DOCX. It indexes in a few seconds.
+5. **Ask** — type a question and press **Enter** (or click ➤). The answer streams in with its source passages and quality metrics.
+6. **Manage documents** — the 📚 **Documents** panel (top-right) lists your files; delete one, or clear all.
+7. **Stop** — press **Ctrl + C** in the server terminal.
+
+**Login & access — there is none, by design.** Ember has **no admin page, no username, and no password.** It binds to `127.0.0.1`, so it is reachable only from your own machine, never over the network — whoever is at your keyboard can use it, and nobody else can. The "admin" work (uploading and deleting documents) *is* the open 📚 panel. If you ever run Ember on a shared or networked machine, add authentication first.
+
 ---
 
 ## Part 1 — What is RAG, in plain words

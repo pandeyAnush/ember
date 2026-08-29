@@ -118,9 +118,10 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
         
-        // 127.0.0.1 (not localhost) forces IPv4 to match the Flask bind, and
-        // 5050 avoids macOS AirPlay Receiver which holds port 5000
-        const API_BASE = 'http://127.0.0.1:5050';
+        // Relative API base: all requests go to the SAME origin that served this
+        // page. That means the app works whether it's opened at 127.0.0.1:5050
+        // locally or through a public tunnel (ngrok / Cloudflare) for others.
+        const API_BASE = '';
 
         function RAGLabInterface() {
             const [question, setQuestion] = useState('');

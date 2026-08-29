@@ -236,8 +236,8 @@
   <section class="hero">
     <div class="hero-copy">
       <span class="eyebrow reveal">Private AI for your documents</span>
-      <h1 class="reveal" style="animation-delay:.05s">Meet <span class="g">Ember</span>. It reads your files - nothing else does.</h1>
-      <p class="lead reveal" style="animation-delay:.12s">Ember turns your PDFs into grounded, streamed answers with sources you can check. Chunking, embeddings, vector search, reranking and a local model - every stage built by hand and running on your machine. No cloud, no keys, nothing leaves the room.</p>
+      <h1 class="reveal" style="animation-delay:.05s">Meet <span class="g">Ember</span>. It reads your files, nothing else does.</h1>
+      <p class="lead reveal" style="animation-delay:.12s">Ember turns your PDFs into grounded, streamed answers with sources you can check. Chunking, embeddings, vector search, reranking and a local model, every stage built by hand and running on your machine. No cloud, no keys, nothing leaves the room.</p>
       <div class="cta reveal" style="animation-delay:.18s">
         <span class="btn">Ask your documents <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         <span class="tag"><span class="d"></span> runs at 127.0.0.1:5050</span>
@@ -267,10 +267,10 @@
     <div class="sh">
       <span class="eyebrow">How Ember thinks</span>
       <h2>Two paths that meet at the index.</h2>
-      <p>Your documents are embedded once and stored. Every question travels the same vector space to find them - and a reranker sharpens the shortlist before the model ever speaks.</p>
+      <p>Your documents are embedded once and stored. Every question travels the same vector space to find them, and a reranker sharpens the shortlist before the model ever speaks.</p>
     </div>
 
-    <div class="flab">Indexing - once per document <span></span></div>
+    <div class="flab">Indexing, once per document <span></span></div>
     <div class="flow">
       <div class="node"><div class="st">Document</div><div class="tl">pdf · txt · docx</div></div>
       <div class="arw"><svg viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6h20M16 1l6 5-6 5"/></svg></div>
@@ -285,7 +285,7 @@
       <div class="node hub"><div class="st">Index</div><div class="tl">FAISS · persisted</div></div>
     </div>
 
-    <div class="flab">Query - every question <span></span></div>
+    <div class="flab">Query, every question <span></span></div>
     <div class="flow">
       <div class="node"><div class="st">Question</div><div class="tl">natural language</div></div>
       <div class="arw"><svg viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6h20M16 1l6 5-6 5"/></svg></div>
@@ -303,10 +303,10 @@
     <div class="stages">
       <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg></div><h3>Extract</h3><div class="tl">PyMuPDF → PyPDF2</div><p>Clean text out of messy PDFs, with a fallback and a warning when a file is scanned images.</p></div>
       <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="12" height="4" rx="1"/></svg></div><h3>Chunk</h3><div class="tl">sentence + overlap</div><p>~512-char passages with overlap, so a fact split across a boundary still lands whole in one chunk.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></div><h3>Filter</h3><div class="tl">noise removal</div><p>Drops tables-of-contents, reference lists and number grids - close to queries, but they answer nothing.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></div><h3>Filter</h3><div class="tl">noise removal</div><p>Drops tables-of-contents, reference lists and number grids, close to queries, but they answer nothing.</p></div>
       <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 7l3 3M17 7l-3 3M7 17l3-3M17 17l-3-3"/></svg></div><h3>Embed</h3><div class="tl">BAAI/bge-large-en</div><p>Text becomes 1024-dimension vectors; queries get BGE's instruction prefix for sharper retrieval.</p></div>
       <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div><h3>Retrieve + Rerank</h3><div class="tl">FAISS + cross-encoder</div><p>Ten candidates by similarity, re-scored by a cross-encoder that reads query and passage together.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c1.2 3-.6 4.5-1.8 6C9 10.6 8 12.4 8 14.5a4 4 0 0 0 8 0c0-1.6-.7-2.8-1.4-3.7-.5.9-1.2 1.4-2 1.4.9-2.2.2-4.2-1.1-5.7"/></svg></div><h3>Generate + Evaluate</h3><div class="tl">Llama 3.1 · Ollama</div><p>A grounded, streamed answer - then scored for relevance, grounding and latency on the way out.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c1.2 3-.6 4.5-1.8 6C9 10.6 8 12.4 8 14.5a4 4 0 0 0 8 0c0-1.6-.7-2.8-1.4-3.7-.5.9-1.2 1.4-2 1.4.9-2.2.2-4.2-1.1-5.7"/></svg></div><h3>Generate + Evaluate</h3><div class="tl">Llama 3.1 · Ollama</div><p>A grounded, streamed answer, then scored for relevance, grounding and latency on the way out.</p></div>
     </div>
   </section>
 
@@ -314,7 +314,7 @@
     <div class="sh">
       <span class="eyebrow">Measured, not assumed</span>
       <h2>Quality you can put a number on.</h2>
-      <p>A built-in evaluation harness scores the running system on a question set - real results on a 66-page technical report.</p>
+      <p>A built-in evaluation harness scores the running system on a question set, real results on a 66-page technical report.</p>
     </div>
 
     <div class="g2">
@@ -326,12 +326,12 @@
       </div>
       <div class="exp">
         <h3>Experiment · chunk size</h3>
-        <p class="cap">The same eight questions, re-run at two chunk sizes - the classic RAG trade-off, measured rather than guessed.</p>
+        <p class="cap">The same eight questions, re-run at two chunk sizes, the classic RAG trade-off, measured rather than guessed.</p>
         <div class="bars">
-          <div class="br"><div class="top"><span class="lab"><b>512</b> - richer context</span><span class="val">relevance 75% · 12.5s</span></div><div class="track"><div class="fill" style="width:75%"></div></div></div>
-          <div class="br"><div class="top"><span class="lab"><b>256</b> - faster</span><span class="val">relevance 69% · 6.3s</span></div><div class="track"><div class="fill s" style="width:69%"></div></div></div>
+          <div class="br"><div class="top"><span class="lab"><b>512</b>, richer context</span><span class="val">relevance 75% · 12.5s</span></div><div class="track"><div class="fill" style="width:75%"></div></div></div>
+          <div class="br"><div class="top"><span class="lab"><b>256</b>, faster</span><span class="val">relevance 69% · 6.3s</span></div><div class="track"><div class="fill s" style="width:69%"></div></div></div>
         </div>
-        <p class="note">Same recall either way - both find the key facts. Smaller chunks nearly halve latency; larger chunks give the model more to reason over. One env var to switch.</p>
+        <p class="note">Same recall either way, both find the key facts. Smaller chunks nearly halve latency; larger chunks give the model more to reason over. One env var to switch.</p>
       </div>
     </div>
   </section>
@@ -351,10 +351,10 @@
   <section>
     <div class="sh"><span class="eyebrow">Decisions</span><h2>The choices that made it work.</h2></div>
     <div class="notes">
-      <div class="nc"><h3>Rerank the shortlist</h3><p>Vector similarity is fast but coarse. A cross-encoder reads the question and each candidate together - the sharpest single jump in quality after clean chunks.</p></div>
+      <div class="nc"><h3>Rerank the shortlist</h3><p>Vector similarity is fast but coarse. A cross-encoder reads the question and each candidate together, the sharpest single jump in quality after clean chunks.</p></div>
       <div class="nc"><h3>Filter the noise</h3><p>On real PDFs, contents pages and bibliographies look relevant to the embedder but answer nothing. Dropping them was the line between garbage and grounded.</p></div>
-      <div class="nc"><h3>Persist the index</h3><p>Embedding a long PDF is the expensive step, so the index and a folder fingerprint are saved - restarts are instant, and only changed files are re-embedded.</p></div>
-      <div class="nc"><h3>Stay local</h3><p>Ollama and sentence-transformers keep Ember private, free and fully inspectable. The goal was to understand the internals - not to call an API and hope.</p></div>
+      <div class="nc"><h3>Persist the index</h3><p>Embedding a long PDF is the expensive step, so the index and a folder fingerprint are saved, restarts are instant, and only changed files are re-embedded.</p></div>
+      <div class="nc"><h3>Stay local</h3><p>Ollama and sentence-transformers keep Ember private, free and fully inspectable. The goal was to understand the internals, not to call an API and hope.</p></div>
     </div>
   </section>
 </div>

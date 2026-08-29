@@ -55,7 +55,7 @@ class ProductionLLMGenerator:
     ) -> Dict[str, Any]:
         """
         Generate response using context (RAG)
-        Single API call — no double-generation overhead
+        Single API call - no double-generation overhead
         
         Args:
             question: User question
@@ -68,13 +68,13 @@ class ProductionLLMGenerator:
         # Prompt tuned for DIRECT, confident answers. The old prompt over-warned
         # about "NOT FOUND IN CONTEXT" and "cite which part", which made Llama 8B
         # hedge, second-guess itself, and narrate its reasoning instead of just
-        # answering — even when the answer was clearly in the context.
+        # answering - even when the answer was clearly in the context.
         system_prompt = """You answer questions about the user's documents using ONLY the provided context.
 
 Rules:
 - Answer immediately and confidently. The first sentence must be the answer itself.
 - Use ONLY the context. NEVER add tools, facts, names, or examples from your own knowledge or from "typical" cases.
-- Do NOT hedge or second-guess. Do not discuss whether the context is "explicit" or "sufficient" — if the context states something, report it plainly as fact.
+- Do NOT hedge or second-guess. Do not discuss whether the context is "explicit" or "sufficient" - if the context states something, report it plainly as fact.
 - Do NOT narrate reasoning or refer to "Document 1/2/3", "the context", or "the pipeline mentioned". Just answer.
 - For broad or "tell me about / summarise / what is this about" questions, ALWAYS give your best short overview synthesised from whatever the context contains. Never refuse a summary.
 - Be concise: a short paragraph or a tight bullet list, no preamble.
@@ -135,7 +135,7 @@ Answer concisely, using the context above."""
 Rules:
 - Answer immediately and confidently. The first sentence must be the answer itself.
 - Use ONLY the context. NEVER add tools, facts, names, or examples from your own knowledge or from "typical" cases.
-- Do NOT hedge or second-guess. Do not discuss whether the context is "explicit" or "sufficient" — if the context states something, report it plainly as fact.
+- Do NOT hedge or second-guess. Do not discuss whether the context is "explicit" or "sufficient" - if the context states something, report it plainly as fact.
 - Do NOT narrate reasoning or refer to "Document 1/2/3", "the context", or "the pipeline mentioned". Just answer.
 - For broad or "tell me about / summarise / what is this about" questions, ALWAYS give your best short overview synthesised from whatever the context contains. Never refuse a summary.
 - Be concise: a short paragraph or a tight bullet list, no preamble.

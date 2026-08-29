@@ -43,7 +43,7 @@ app = Flask(__name__)
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB upload cap
 
-# Global variables — heavy models are cached here and loaded exactly once
+# Global variables - heavy models are cached here and loaded exactly once
 rag_pipeline = None
 evaluation_logger = None
 embedding_generator = None
@@ -92,7 +92,7 @@ def _is_useful_chunk(text):
     if len(re.findall(r'[A-Za-z]{3,}', t)) < 12:
         return False
     # bibliography / reference-list chunks: several "(YYYY)" citations, or an
-    # "[Accessed ...]" marker, or multiple URLs — noise for content questions
+    # "[Accessed ...]" marker, or multiple URLs - noise for content questions
     if len(re.findall(r'\((?:19|20)\d{2}\)', t)) >= 3:
         return False
     if re.search(r'\[Accessed\b', t) or t.lower().count('http') >= 2:
@@ -134,7 +134,7 @@ def _ensure_models():
 
     if chunker is None:
         # Chunk size is tunable via RAGLAB_CHUNK_SIZE for experimentation
-        # (default 512 — larger chunks give the reranker/LLM more context per hit)
+        # (default 512 - larger chunks give the reranker/LLM more context per hit)
         size = int(os.environ.get("RAGLAB_CHUNK_SIZE", "512"))
         chunker = SentenceChunker(target_chunk_size=size)
 
@@ -143,7 +143,7 @@ def _build_or_load_store(force_rebuild=False):
     """Return (VectorStore, chunk_count).
 
     Fast path: if a persisted index exists and the data/ fingerprint is
-    unchanged, load it straight from disk — no embedding work at all.
+    unchanged, load it straight from disk - no embedding work at all.
     Slow path: (re)embed every document, save the index, and write a fresh
     manifest. Triggered on first build, when data/ changed, or force_rebuild."""
     index_file = VECTOR_STORE_DIR / "faiss.index"
@@ -156,11 +156,11 @@ def _build_or_load_store(force_rebuild=False):
             if json.loads(MANIFEST_PATH.read_text()) == manifest:
                 store = VectorStore(embedding_dim=embedding_generator.get_embedding_dimension())
                 store.load(str(VECTOR_STORE_DIR))
-                print(f"⚡ Reused persisted vector store ({len(store)} chunks) — skipped re-embedding")
+                print(f"⚡ Reused persisted vector store ({len(store)} chunks) - skipped re-embedding")
                 return store, len(store)
-            print("♻️  data/ changed since last index — rebuilding vector store")
+            print("♻️  data/ changed since last index - rebuilding vector store")
         except Exception as e:
-            print(f"⚠️  Could not reuse saved store ({e}) — rebuilding")
+            print(f"⚠️  Could not reuse saved store ({e}) - rebuilding")
 
     # Slow path: (re)embed everything
     loader = DocumentLoader(data_dir=str(DATA_DIR))
@@ -174,7 +174,7 @@ def _build_or_load_store(force_rebuild=False):
     store = VectorStore(embedding_dim=embedding_generator.get_embedding_dimension())
     if chunks:
         chunk_texts = [c["content"] for c in chunks]
-        # Documents get no query-instruction prefix — only queries do
+        # Documents get no query-instruction prefix - only queries do
         embeddings = embedding_generator.embed_texts(chunk_texts, is_query=False)
         store.add(embeddings, chunks)
 
@@ -197,7 +197,7 @@ def initialize_pipeline(force_rebuild=False):
         _ensure_models()
         vector_store, chunk_count = _build_or_load_store(force_rebuild=force_rebuild)
 
-        # embedding_model=None: skip loading the unused built-in MiniLM model —
+        # embedding_model=None: skip loading the unused built-in MiniLM model -
         # production embeds with BGE (embedding_generator) and we assign the
         # BGE-backed vector_store right below.
         retriever = Retriever(chunker, embedding_model=None)
@@ -229,7 +229,7 @@ def initialize_pipeline(force_rebuild=False):
 @app.route('/', methods=['GET'])
 def index():
     """Serve the RAGLab UI so the whole app is available at one URL
-    (http://127.0.0.1:5050) — same-origin, and HTTP reloads always fetch fresh
+    (http://127.0.0.1:5050) - same-origin, and HTTP reloads always fetch fresh
     (no file:// caching that can leave the browser on stale frontend code)."""
     return send_from_directory(str(FRONTEND_DIR), 'raglab_ui.html')
 
@@ -383,7 +383,7 @@ def get_stats():
 
 def _add_files_to_store(filenames):
     """Embed ONLY the newly uploaded files (BGE) and append their chunks to the
-    live vector store — no re-embedding of existing documents. That full
+    live vector store - no re-embedding of existing documents. That full
     re-embed is what OOM-crashed the backend on 16GB during uploads. Returns the
     number of chunks added, or -1 if the store isn't ready (caller should then
     do a one-time full build)."""
@@ -465,13 +465,13 @@ def upload_files():
         if uploaded_count == 0:
             return jsonify({'error': 'No valid files could be saved'}), 400
 
-        # Incremental index: embed ONLY the new files and append their chunks —
+        # Incremental index: embed ONLY the new files and append their chunks -
         # no re-embedding of the whole corpus (that full re-embed is what
         # OOM-crashed the backend on 16GB before).
         print("\n🔄 Indexing new file(s)...")
         added = _add_files_to_store(uploaded_names)
         if added < 0:
-            # Store not ready (fresh boot, never indexed) — do the full build once
+            # Store not ready (fresh boot, never indexed) - do the full build once
             if not initialize_pipeline(force_rebuild=True):
                 return jsonify({'error': 'Indexing failed'}), 500
         return jsonify({
@@ -524,7 +524,7 @@ def _drop_source_from_store(source_stem):
 
     new_store = VectorStore(embedding_dim=store.embedding_dim)
     if keep_idx:
-        # IndexFlatL2 supports reconstruct(i) — pull each kept vector back out
+        # IndexFlatL2 supports reconstruct(i) - pull each kept vector back out
         vectors = np.vstack([store.index.reconstruct(int(i)) for i in keep_idx]).astype('float32')
         new_store.add(vectors, [store.chunks[i] for i in keep_idx])
 
@@ -618,7 +618,7 @@ if __name__ == '__main__':
         print("⏸️  Press Ctrl+C to stop")
         # threaded=True so a slow request (LLM generation, or a re-index during
         # upload/delete) doesn't block health checks and other requests on the
-        # single-threaded dev server — that blocking makes normal slowness look
+        # single-threaded dev server - that blocking makes normal slowness look
         # like a crash ("Load failed") in the browser.
         app.run(host='127.0.0.1', port=5050, debug=False, threaded=True)
     else:

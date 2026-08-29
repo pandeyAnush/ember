@@ -42,7 +42,7 @@ class SentenceChunker(ChunkingStrategy):
 
     `overlap` carries the last ~N characters (whole trailing sentences) of each
     chunk into the start of the next one, so a fact that straddles a chunk
-    boundary still appears whole in at least one chunk — improving retrieval
+    boundary still appears whole in at least one chunk - improving retrieval
     recall.
     """
 

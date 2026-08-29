@@ -21,7 +21,7 @@ class Retriever:
         if embedding_model is None:
             # Production path: the caller supplies its own embedder (BGE) and
             # assigns .vector_store afterwards. Skip loading the built-in
-            # MiniLM model entirely — it would just waste RAM and startup time.
+            # MiniLM model entirely - it would just waste RAM and startup time.
             self.embedding_gen = None
             self.vector_store = None
         else:

@@ -55,7 +55,7 @@ def main():
     with open(args.questions) as f:
         cases = json.load(f)["questions"]
 
-    print(f"\nRAGLab evaluation — {len(cases)} questions against {args.url}\n")
+    print(f"\nRAGLab evaluation - {len(cases)} questions against {args.url}\n")
     print(f"{'#':>2}  {'recall':>7}  {'relev':>6}  {'sim':>5}  {'halluc':>6}  {'time':>6}  question")
     print("-" * 92)
 
@@ -85,7 +85,7 @@ def main():
         times.append(t)
         halluc_count += 1 if halluc else 0
 
-        rec_s = f"{rec*100:5.0f}%" if rec is not None else "   —"
+        rec_s = f"{rec*100:5.0f}%" if rec is not None else "   -"
         print(f"{i:>2}  {rec_s:>7}  {relev*100:5.0f}%  {sim*100:4.0f}%  "
               f"{'YES' if halluc else 'no':>6}  {t:5.1f}s  {q[:44]}")
 

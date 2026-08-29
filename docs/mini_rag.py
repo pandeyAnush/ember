@@ -1,4 +1,4 @@
-# mini_rag.py — a complete, minimal RAG in one file.
+# mini_rag.py - a complete, minimal RAG in one file.
 import sys, re, requests, faiss
 from sentence_transformers import SentenceTransformer
 

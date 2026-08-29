@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ember — your documents, understood</title>
+    <title>Ember - your documents, understood</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Progressive enhancement: if Google Fonts is blocked, the fallback stack
@@ -166,7 +166,7 @@
                 setError(null);
                 // Optimistic update: the backend deletes the file, THEN re-embeds
                 // the rest (slow). Remove it from the list right away so the UI
-                // updates instantly — no waiting on the re-index, no manual reload.
+                // updates instantly - no waiting on the re-index, no manual reload.
                 setDocuments(prev => prev.filter(d => d.name !== name));
                 setDocBusy(true);
                 try {
@@ -184,7 +184,7 @@
                 } finally {
                     // Re-sync with server truth. /list-documents reads the data/
                     // folder, which already reflects the deletion even while the
-                    // re-index is still running — so the list is correct whether
+                    // re-index is still running - so the list is correct whether
                     // the request succeeded, timed out, or errored.
                     fetchDocuments();
                     setDocBusy(false);
@@ -320,7 +320,7 @@
                                 </div>
                                 <div>
                                     <h1 className="text-2xl font-bold tracking-tight">Ember</h1>
-                                    <p className="text-xs text-slate-400">Your documents, understood — locally</p>
+                                    <p className="text-xs text-slate-400">Your documents, understood - locally</p>
                                 </div>
                                 <button
                                     onClick={() => setShowDocs(!showDocs)}
@@ -391,7 +391,7 @@
                                 <div className="flex flex-col items-center justify-center py-12 text-center h-full">
                                     <div className="w-16 h-16 rounded-full flex items-center justify-center mb-5" style={{background:'radial-gradient(120% 120% at 32% 26%, #FFE8B0 0%, #F6A65E 30%, #E9744A 62%, #C2452C 100%)', boxShadow:'0 18px 40px -14px rgba(224,122,95,0.65), inset -6px -8px 16px rgba(120,30,10,.45), inset 5px 6px 12px rgba(255,225,170,.5)'}}></div>
                                     <h2 className="text-2xl font-bold mb-2 tracking-tight">Ask Ember anything</h2>
-                                    <p className="text-slate-400 text-sm max-w-xs">It reads your documents and answers with sources — everything stays on your machine.</p>
+                                    <p className="text-slate-400 text-sm max-w-xs">It reads your documents and answers with sources - everything stays on your machine.</p>
                                 </div>
                             ) : (
                                 history.map((item, idx) => (

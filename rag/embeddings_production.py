@@ -78,7 +78,7 @@ class ProductionEmbeddingGenerator:
     
     # Alias methods for compatibility with existing Retriever class
     def embed_batch(self, texts: list, is_query: bool = False) -> np.ndarray:
-        """Alias for embed_texts() — for compatibility with existing Retriever"""
+        """Alias for embed_texts() - for compatibility with existing Retriever"""
         return self.embed_texts(texts, is_query=is_query)
     
     def get_embedding_dimension(self) -> int:
@@ -87,5 +87,5 @@ class ProductionEmbeddingGenerator:
     
     # Alias for compatibility with existing Retriever class
     def get_dimension(self) -> int:
-        """Alias for get_embedding_dimension() — for compatibility with existing Retriever"""
+        """Alias for get_embedding_dimension() - for compatibility with existing Retriever"""
         return self.get_embedding_dimension()

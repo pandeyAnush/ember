@@ -1,5 +1,5 @@
 {
-  "_comment": "Evaluation set for RAGLab. Edit these to match whatever document is indexed. 'keywords' are terms a correct answer should contain (case-insensitive); 'expected_source' (optional) is the document stem the best chunk should come from. The questions below target the CMP5366 MLOps report (AnushDatabaseandMl.pdf) — index that document, then run: venv/bin/python evaluate.py",
+  "_comment": "Evaluation set for RAGLab. Edit these to match whatever document is indexed. 'keywords' are terms a correct answer should contain (case-insensitive); 'expected_source' (optional) is the document stem the best chunk should come from. The questions below target the CMP5366 MLOps report (AnushDatabaseandMl.pdf) - index that document, then run: venv/bin/python evaluate.py",
   "questions": [
     {"question": "What tools and technologies are used in the MLOps pipeline?",
      "keywords": ["Airflow", "MariaDB", "Redis", "Great Expectations", "MLflow", "FastAPI"]},

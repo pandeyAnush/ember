@@ -135,7 +135,7 @@ class ProductionRAGPipeline:
         has_hallucination = hallucination_result.get("has_hallucination", False)
         hallucination_confidence = hallucination_result.get("confidence", 0)
         
-        # Relevance — semantic similarity (BGE) between the question and the
+        # Relevance - semantic similarity (BGE) between the question and the
         # answer. This reflects on-topic-ness far better than word overlap, which
         # unfairly penalises short, direct answers (a concise correct answer
         # shares few literal words with the question). Reuses the query embedding
@@ -166,7 +166,7 @@ class ProductionRAGPipeline:
                 source_docs.append("Unknown")
         
         # Build the final reranked chunks as OBJECTS (content + source + similarity)
-        # so the frontend can show source and match% — it does chunk.content /
+        # so the frontend can show source and match% - it does chunk.content /
         # chunk.source / chunk.similarity, which breaks on bare strings.
         retrieved_chunks = []
         for rank, idx in enumerate(rerank_indices):

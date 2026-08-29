@@ -113,7 +113,7 @@ class ProductionRAGPipeline:
         context = "\n---\n".join([f"[Document {i+1}]\n{doc}" for i, doc in enumerate(reranked_docs)])
         
         # Step 4: Generate response
-        print(f"\n🤖 Step 4: Response Generation")
+        print(f"\n✍️ Step 4: Response Generation")
         generation_start = time.time()
         
         generation_result = self.llm_generator.generate_with_context(

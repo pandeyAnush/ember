@@ -43,7 +43,7 @@ class ProductionLLMGenerator:
         self.model = model
         self.base_url = base_url
         self.temperature = temperature
-        print(f"🤖 Initializing LLM: {model}")
+        print(f"⚙️ Initializing LLM: {model}")
         print(f"⚙️  Temperature: {temperature} (lower = more focused/factual)")
         print(f"📍 Ollama URL: {base_url}")
     

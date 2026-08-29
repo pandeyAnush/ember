@@ -18,7 +18,7 @@ Ask questions about your own PDFs and get grounded, streamed answers with source
 
 ## Features
 
-- 🧠 **Production retrieval pipeline** — BGE embeddings → FAISS similarity search → cross-encoder reranking → local LLM generation
+- 🔎 **Production retrieval pipeline** — BGE embeddings → FAISS similarity search → cross-encoder reranking → local LLM generation
 - 🔒 **100% local** — Ollama for the LLM, sentence-transformers for embeddings; nothing leaves your machine
 - ⏳ **Streaming answers** — sources appear instantly, the answer types out token-by-token
 - 📄 **Real PDF handling** — PyMuPDF extraction with noise filtering (drops tables-of-contents, reference lists, and page junk that pollute retrieval)

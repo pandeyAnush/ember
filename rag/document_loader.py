@@ -69,7 +69,7 @@ class DocumentLoader:
                 print(f"Error reading PDF {file_path}: {e}")
 
         if not text.strip():
-            print(f"⚠️  No extractable text from {file_path} (likely a scanned/image PDF)")
+            print(f" No extractable text from {file_path} (likely a scanned/image PDF)")
         return text
 
     def load_docx(self, file_path: str) -> str:

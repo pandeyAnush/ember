@@ -1,6 +1,6 @@
 """
 Production RAG Pipeline
-Retrieval → Reranking → Generation → Evaluation
+Retrieval Reranking Generation Evaluation
 """
 
 from typing import Dict, Any
@@ -12,20 +12,20 @@ from datetime import datetime
 class ProductionRAGPipeline:
     """
     Production-grade RAG pipeline with reranking
-    
+
     Flow:
-    1. Query → Embed with BGE query instruction
+    1. Query Embed with BGE query instruction
     2. Retrieve top-k documents from vector store
     3. Rerank for quality
     4. Generate answer with context
     5. Evaluate quality
     6. Log results
     """
-    
+
     def __init__(self, retriever, embedding_generator, reranker, llm_generator, evaluation_logger=None):
         """
         Initialize RAG pipeline
-        
+
         Args:
             retriever: Document retriever (with indexed vector_store)
             embedding_generator: ProductionEmbeddingGenerator instance
@@ -38,8 +38,8 @@ class ProductionRAGPipeline:
         self.reranker = reranker
         self.llm_generator = llm_generator
         self.evaluation_logger = evaluation_logger
-        print("✅ Production RAG Pipeline initialized")
-    
+        print("Production RAG Pipeline initialized")
+
     def query(
         self,
         question: str,
@@ -48,50 +48,50 @@ class ProductionRAGPipeline:
     ) -> Dict[str, Any]:
         """
         Execute full RAG pipeline
-        
+
         Args:
             question: User question
             num_initial_retrieval: Initial retrieval count (before reranking)
             num_final_chunks: Final chunk count after reranking
-            
+
         Returns:
             Dict with response, metrics, and source documents
         """
         pipeline_start = time.time()
-        
-        print(f"\n🚀 Processing query: {question}")
+
+        print(f"\nProcessing query: {question}")
         print("=" * 60)
-        
+
         # Step 1: Retrieve initial documents with BGE query instruction
-        print(f"\n📚 Step 1: Initial Retrieval (top-{num_initial_retrieval})")
+        print(f"\nStep 1: Initial Retrieval (top-{num_initial_retrieval})")
         retrieval_start = time.time()
-        
+
         try:
             # Embed query with BGE instruction prefix for optimal retrieval
             query_embedding = self.embedding_generator.embed_text(question, is_query=True)
             retrieved_results = self.retriever.vector_store.search(query_embedding, k=num_initial_retrieval)
-            
+
         except Exception as e:
-            print(f"❌ Retrieval failed: {e}")
+            print(f"Retrieval failed: {e}")
             return {
                 "question": question,
                 "response": f"Error during retrieval: {str(e)}",
                 "status": "error"
             }
-        
+
         retrieval_time = time.time() - retrieval_start
         retrieved_docs = [r["content"] for r in retrieved_results]
-        
-        print(f"✅ Retrieved {len(retrieved_docs)} documents in {retrieval_time:.2f}s")
-        
+
+        print(f"Retrieved {len(retrieved_docs)} documents in {retrieval_time:.2f}s")
+
         # Calculate initial retrieval quality
         initial_similarity_scores = [r.get("similarity", 0) for r in retrieved_results]
         avg_initial_similarity = sum(initial_similarity_scores) / len(initial_similarity_scores) if initial_similarity_scores else 0
-        
+
         # Step 2: Rerank documents
-        print(f"\n🔄 Step 2: Reranking (filtering to top-{num_final_chunks})")
+        print(f"\nStep 2: Reranking (filtering to top-{num_final_chunks})")
         rerank_start = time.time()
-        
+
         try:
             reranked_docs, rerank_scores, rerank_indices = self.reranker.rerank(
                 question,
@@ -99,42 +99,42 @@ class ProductionRAGPipeline:
                 top_k=num_final_chunks
             )
         except Exception as e:
-            print(f"⚠️  Reranking failed, using initial retrieval: {e}")
+            print(f" Reranking failed, using initial retrieval: {e}")
             reranked_docs = retrieved_docs[:num_final_chunks]
             rerank_scores = initial_similarity_scores[:num_final_chunks]
             rerank_indices = list(range(num_final_chunks))
-        
+
         rerank_time = time.time() - rerank_start
-        
-        print(f"✅ Reranked to {len(reranked_docs)} documents in {rerank_time:.2f}s")
-        
+
+        print(f"Reranked to {len(reranked_docs)} documents in {rerank_time:.2f}s")
+
         # Step 3: Create context
-        print(f"\n📄 Step 3: Context Assembly")
+        print(f"\nStep 3: Context Assembly")
         context = "\n---\n".join([f"[Document {i+1}]\n{doc}" for i, doc in enumerate(reranked_docs)])
-        
+
         # Step 4: Generate response
-        print(f"\n✍️ Step 4: Response Generation")
+        print(f"\nStep 4: Response Generation")
         generation_start = time.time()
-        
+
         generation_result = self.llm_generator.generate_with_context(
             question,
             context,
             num_context_chunks=len(reranked_docs)
         )
-        
+
         generation_time = time.time() - generation_start
         response = generation_result.get("response", "")
-        
-        print(f"✅ Generated response in {generation_time:.2f}s")
-        
+
+        print(f"Generated response in {generation_time:.2f}s")
+
         # Step 5: Evaluate
-        print(f"\n📊 Step 5: Quality Evaluation")
-        
+        print(f"\nStep 5: Quality Evaluation")
+
         # Hallucination check
         hallucination_result = self.llm_generator.check_hallucination(response, context)
         has_hallucination = hallucination_result.get("has_hallucination", False)
         hallucination_confidence = hallucination_result.get("confidence", 0)
-        
+
         # Relevance - semantic similarity (BGE) between the question and the
         # answer. This reflects on-topic-ness far better than word overlap, which
         # unfairly penalises short, direct answers (a concise correct answer
@@ -148,14 +148,14 @@ class ProductionRAGPipeline:
             relevance = max(0.0, min(1.0, relevance))
         except Exception:
             relevance = self.llm_generator.calculate_relevance(response, question)
-        
+
         # Reranking quality
         avg_rerank_score = sum(rerank_scores) / len(rerank_scores) if rerank_scores else 0
-        
+
         pipeline_time = time.time() - pipeline_start
-        
-        print(f"⏱️  Total pipeline time: {pipeline_time:.2f}s")
-        
+
+        print(f" Total pipeline time: {pipeline_time:.2f}s")
+
         # Map rerank indices back to original source documents
         # rerank_indices tells us which of the initially retrieved docs made it to top-k
         source_docs = []
@@ -164,7 +164,7 @@ class ProductionRAGPipeline:
                 source_docs.append(retrieved_results[idx].get("source", "Unknown"))
             else:
                 source_docs.append("Unknown")
-        
+
         # Build the final reranked chunks as OBJECTS (content + source + similarity)
         # so the frontend can show source and match% - it does chunk.content /
         # chunk.source / chunk.similarity, which breaks on bare strings.
@@ -206,7 +206,7 @@ class ProductionRAGPipeline:
             },
             "status": "success"
         }
-        
+
         # Log results if logger is available
         if self.evaluation_logger:
             try:
@@ -215,19 +215,19 @@ class ProductionRAGPipeline:
                 if hasattr(self.evaluation_logger, 'log_result'):
                     self.evaluation_logger.log_result(result)
                 else:
-                    print(f"⚠️  EvaluationLogger missing log_result method")
+                    print(f" EvaluationLogger missing log_result method")
             except Exception as e:
-                print(f"⚠️  Logging failed: {e}")
-        
+                print(f" Logging failed: {e}")
+
         # Print summary
         print("\n" + "=" * 60)
-        print("📈 QUALITY SUMMARY:")
+        print("QUALITY SUMMARY:")
         print(f"  Retrieval Quality: {avg_rerank_score:.1%} (after reranking)")
         print(f"  Response Relevance: {relevance:.1%}")
-        print(f"  Hallucination Risk: {'🚨 DETECTED' if has_hallucination else '✅ OK'}")
+        print(f"  Hallucination Risk: {'DETECTED' if has_hallucination else 'OK'}")
         print(f"  Total Time: {pipeline_time:.2f}s")
         print("=" * 60)
-        
+
         return result
 
 

@@ -55,7 +55,7 @@ chunker = None
 # alongside the vector store so startup can tell whether a rebuild is needed
 MANIFEST_PATH = VECTOR_STORE_DIR / "manifest.json"
 
-print("🚀 Production RAGLab Backend Server")
+print("Production RAGLab Backend Server")
 print("=" * 60)
 
 
@@ -84,7 +84,7 @@ def _is_useful_chunk(text):
     # TOC / list-of-figures / list-of-tables use dot leaders ("Abstract ...... 4")
     if re.search(r'\.{4,}', t):
         return False
-    # mostly non-letters → number tables, separators, dotted rows, arrows
+    # mostly non-letters number tables, separators, dotted rows, arrows
     letters = sum(ch.isalpha() for ch in t)
     if letters < 0.55 * len(t):
         return False
@@ -118,15 +118,15 @@ def _ensure_models():
     global embedding_generator, reranker, llm_generator, evaluation_logger, chunker
 
     if embedding_generator is None:
-        print("1️⃣  Loading BGE Embeddings (1024-dim, with query instruction)...")
+        print("1⃣  Loading BGE Embeddings (1024-dim, with query instruction)...")
         embedding_generator = ProductionEmbeddingGenerator()
 
     if reranker is None:
-        print("2️⃣  Loading Reranker (cross-encoder/ms-marco-MiniLM-L-12-v2)...")
+        print("2⃣  Loading Reranker (cross-encoder/ms-marco-MiniLM-L-12-v2)...")
         reranker = ProductionReranker(model_name="cross-encoder/ms-marco-MiniLM-L-12-v2")
 
     if llm_generator is None:
-        print("3️⃣  Initializing Llama 3.1 8B (hardware-appropriate for 16GB M4)...")
+        print("3⃣  Initializing Llama 3.1 8B (hardware-appropriate for 16GB M4)...")
         llm_generator = ProductionLLMGenerator(model="llama3.1:8b", temperature=0.3)
 
     if evaluation_logger is None:
@@ -156,20 +156,20 @@ def _build_or_load_store(force_rebuild=False):
             if json.loads(MANIFEST_PATH.read_text()) == manifest:
                 store = VectorStore(embedding_dim=embedding_generator.get_embedding_dimension())
                 store.load(str(VECTOR_STORE_DIR))
-                print(f"⚡ Reused persisted vector store ({len(store)} chunks) - skipped re-embedding")
+                print(f"Reused persisted vector store ({len(store)} chunks) - skipped re-embedding")
                 return store, len(store)
-            print("♻️  data/ changed since last index - rebuilding vector store")
+            print(" data/ changed since last index - rebuilding vector store")
         except Exception as e:
-            print(f"⚠️  Could not reuse saved store ({e}) - rebuilding")
+            print(f" Could not reuse saved store ({e}) - rebuilding")
 
     # Slow path: (re)embed everything
     loader = DocumentLoader(data_dir=str(DATA_DIR))
     documents = loader.load_documents()
-    print(f"✅ Loaded {len(documents)} documents" if documents
-          else "⚠️  No documents found in data/ folder")
+    print(f"Loaded {len(documents)} documents" if documents
+          else " No documents found in data/ folder")
 
     chunks = _chunk_documents(documents)
-    print(f"✅ Created {len(chunks)} chunks (after filtering PDF noise)")
+    print(f"Created {len(chunks)} chunks (after filtering PDF noise)")
 
     store = VectorStore(embedding_dim=embedding_generator.get_embedding_dimension())
     if chunks:
@@ -181,7 +181,7 @@ def _build_or_load_store(force_rebuild=False):
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
     store.save(str(VECTOR_STORE_DIR))
     MANIFEST_PATH.write_text(json.dumps(manifest))
-    print(f"✅ Vector store rebuilt and saved ({len(chunks)} chunks indexed)")
+    print(f"Vector store rebuilt and saved ({len(chunks)} chunks indexed)")
     return store, len(chunks)
 
 
@@ -192,7 +192,7 @@ def initialize_pipeline(force_rebuild=False):
     global rag_pipeline
 
     try:
-        print("\n📦 Initializing Production RAG Pipeline...")
+        print("\nInitializing Production RAG Pipeline...")
 
         _ensure_models()
         vector_store, chunk_count = _build_or_load_store(force_rebuild=force_rebuild)
@@ -212,14 +212,14 @@ def initialize_pipeline(force_rebuild=False):
         )
 
         print("\n" + "=" * 60)
-        print("✅ Production RAGLab Backend Ready!")
+        print("Production RAGLab Backend Ready!")
         print("   Embeddings: BGE (1024-dim) | Reranker: ms-marco-MiniLM-L-12-v2 | LLM: Llama 3.1 8B")
         print(f"   Chunks indexed: {chunk_count}")
         print("=" * 60)
         return True
 
     except Exception as e:
-        print(f"\n❌ Initialization failed: {e}")
+        print(f"\nInitialization failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -262,24 +262,24 @@ def query():
     try:
         data = request.json
         question = data.get('question', '').strip()
-        
+
         if not question:
             return jsonify({"error": "Question is required"}), 400
-        
+
         if not rag_pipeline:
             return jsonify({"error": "RAG Pipeline not initialized"}), 500
-        
+
         # Execute pipeline
         result = rag_pipeline.query(
             question=question,
             num_initial_retrieval=10,  # Retrieve more, then rerank
             num_final_chunks=3         # Final context size
         )
-        
+
         return jsonify(result)
 
     except Exception as e:
-        print(f"❌ Query error: {e}")
+        print(f"Query error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
@@ -287,7 +287,7 @@ def query():
 
 @app.route('/query-stream', methods=['POST'])
 def query_stream():
-    """Streaming query: newline-delimited JSON events (context → tokens → done)
+    """Streaming query: newline-delimited JSON events (context tokens done)
     so the UI shows sources immediately and streams the answer token-by-token."""
     data = request.json or {}
     question = (data.get('question') or '').strip()
@@ -303,7 +303,7 @@ def query_stream():
                                                    num_final_chunks=3):
                 yield json.dumps(event) + "\n"
         except Exception as e:
-            print(f"❌ Stream error: {e}")
+            print(f"Stream error: {e}")
             yield json.dumps({"type": "error", "error": str(e)}) + "\n"
 
     # X-Accel-Buffering off + text/plain keeps tokens flowing without buffering
@@ -320,19 +320,19 @@ def get_documents():
 
         loader = DocumentLoader(data_dir=str(DATA_DIR))
         documents = loader.load_documents()
-        
+
         return jsonify({
             "count": len(documents),
             "documents": [
                 {
-                    "source": d["source"], 
+                    "source": d["source"],
                     "size": len(d["content"]),
                     "preview": d["content"][:200]
-                } 
+                }
                 for d in documents
             ]
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -343,7 +343,7 @@ def get_stats():
     try:
         if not rag_pipeline:
             return jsonify({"status": "Pipeline not initialized"})
-        
+
         return jsonify({
             "pipeline": "Production with Reranking",
             "embedding_model": "BAAI/bge-large-en-v1.5 (1024-dim)",
@@ -376,7 +376,7 @@ def get_stats():
                 "Timing breakdowns"
             ]
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -418,7 +418,7 @@ def _add_files_to_store(filenames):
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
     store.save(str(VECTOR_STORE_DIR))
     MANIFEST_PATH.write_text(json.dumps(_data_manifest()))
-    print(f"⚡ Added {len(chunks)} chunks from {len(new_docs)} new file(s) (no full re-embed)")
+    print(f"Added {len(chunks)} chunks from {len(new_docs)} new file(s) (no full re-embed)")
     return len(chunks)
 
 
@@ -428,12 +428,12 @@ def upload_files():
     try:
         if 'files' not in request.files:
             return jsonify({'error': 'No files provided'}), 400
-        
+
         files = request.files.getlist('files')
-        
+
         if not files or all(f.filename == '' for f in files):
             return jsonify({'error': 'No valid files uploaded'}), 400
-        
+
         # Create data directory if it doesn't exist
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         data_dir_resolved = str(DATA_DIR.resolve())
@@ -454,13 +454,13 @@ def upload_files():
 
             # Defense in depth: confirm the resolved path still lands inside DATA_DIR
             if os.path.commonpath([data_dir_resolved, os.path.abspath(filepath)]) != data_dir_resolved:
-                print(f"⚠️  Rejected upload with unsafe filename: {file.filename}")
+                print(f" Rejected upload with unsafe filename: {file.filename}")
                 continue
 
             file.save(filepath)
             uploaded_count += 1
             uploaded_names.append(filename)
-            print(f"✅ Uploaded: {filename}")
+            print(f"Uploaded: {filename}")
 
         if uploaded_count == 0:
             return jsonify({'error': 'No valid files could be saved'}), 400
@@ -468,7 +468,7 @@ def upload_files():
         # Incremental index: embed ONLY the new files and append their chunks -
         # no re-embedding of the whole corpus (that full re-embed is what
         # OOM-crashed the backend on 16GB before).
-        print("\n🔄 Indexing new file(s)...")
+        print("\nIndexing new file(s)...")
         added = _add_files_to_store(uploaded_names)
         if added < 0:
             # Store not ready (fresh boot, never indexed) - do the full build once
@@ -479,9 +479,9 @@ def upload_files():
             'count': uploaded_count,
             'message': f'Uploaded {uploaded_count} file(s) and indexed successfully'
         })
-            
+
     except Exception as e:
-        print(f"❌ Upload error: {e}")
+        print(f"Upload error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -532,7 +532,7 @@ def _drop_source_from_store(source_stem):
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
     new_store.save(str(VECTOR_STORE_DIR))
     MANIFEST_PATH.write_text(json.dumps(_data_manifest()))
-    print(f"⚡ Dropped {removed} chunks for '{source_stem}' (no re-embedding)")
+    print(f"Dropped {removed} chunks for '{source_stem}' (no re-embedding)")
     return removed
 
 
@@ -553,7 +553,7 @@ def delete_document():
             return jsonify({'error': f'File not found: {safe}'}), 404
 
         filepath.unlink()
-        print(f"✅ Deleted: {safe}")
+        print(f"Deleted: {safe}")
 
         # Fast path: drop this file's chunks from the existing index.
         removed = _drop_source_from_store(Path(safe).stem)
@@ -572,7 +572,7 @@ def delete_document():
         })
 
     except Exception as e:
-        print(f"❌ Delete error: {e}")
+        print(f"Delete error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -585,13 +585,13 @@ def clear_all_documents():
             for f in DATA_DIR.iterdir():
                 if f.is_file():
                     f.unlink()
-                    print(f"✅ Deleted: {f.name}")
+                    print(f"Deleted: {f.name}")
 
         # The real vector store is a DIRECTORY (faiss.index + chunks.json),
         # not a .pkl file - remove the whole tree
         if VECTOR_STORE_DIR.exists():
             shutil.rmtree(VECTOR_STORE_DIR)
-            print("✅ Deleted vector store")
+            print("Deleted vector store")
 
         # Re-initialize empty pipeline (models stay cached)
         if initialize_pipeline(force_rebuild=True):
@@ -603,7 +603,7 @@ def clear_all_documents():
         return jsonify({'error': 'Re-initialization failed'}), 500
 
     except Exception as e:
-        print(f"❌ Clear error: {e}")
+        print(f"Clear error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -614,13 +614,13 @@ if __name__ == '__main__':
         # on *:5000 and answers requests with HTTP 403, so a backend on 5000 is
         # shadowed. 5050 is free. (Alternatively disable AirPlay Receiver in
         # System Settings > General > AirDrop & Handoff.)
-        print("\n🌐 Starting Flask server on http://127.0.0.1:5050")
-        print("⏸️  Press Ctrl+C to stop")
+        print("\nStarting Flask server on http://127.0.0.1:5050")
+        print(" Press Ctrl+C to stop")
         # threaded=True so a slow request (LLM generation, or a re-index during
         # upload/delete) doesn't block health checks and other requests on the
         # single-threaded dev server - that blocking makes normal slowness look
         # like a crash ("Load failed") in the browser.
         app.run(host='127.0.0.1', port=5050, debug=False, threaded=True)
     else:
-        print("\n❌ Failed to initialize. Check errors above.")
+        print("\nFailed to initialize. Check errors above.")
         sys.exit(1)

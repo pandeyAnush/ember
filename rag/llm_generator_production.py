@@ -19,7 +19,7 @@ class ProductionLLMGenerator:
     - Direct API calls (no double-calling)
     - Quality metrics tracking
     """
-    
+
     def __init__(
         self,
         model: str = "llama3.1:8b",  # Hardware-appropriate for 16GB RAM
@@ -31,7 +31,7 @@ class ProductionLLMGenerator:
         base_url = base_url or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
         """
         Initialize LLM generator
-        
+
         Args:
             model: Ollama model name
                    llama3.1:8b - RECOMMENDED for 16GB M4 MacBook Air (balanced quality/speed)
@@ -43,10 +43,10 @@ class ProductionLLMGenerator:
         self.model = model
         self.base_url = base_url
         self.temperature = temperature
-        print(f"⚙️ Initializing LLM: {model}")
-        print(f"⚙️  Temperature: {temperature} (lower = more focused/factual)")
-        print(f"📍 Ollama URL: {base_url}")
-    
+        print(f"Initializing LLM: {model}")
+        print(f" Temperature: {temperature} (lower = more focused/factual)")
+        print(f"Ollama URL: {base_url}")
+
     def generate_with_context(
         self,
         question: str,
@@ -56,12 +56,12 @@ class ProductionLLMGenerator:
         """
         Generate response using context (RAG)
         Single API call - no double-generation overhead
-        
+
         Args:
             question: User question
             context: Retrieved context from documents
             num_context_chunks: Number of chunks used (for logging)
-            
+
         Returns:
             Dict with response and metadata
         """
@@ -86,7 +86,7 @@ Rules:
 Question: {question}
 
 Answer concisely, using the context above."""
-        
+
         try:
             response = requests.post(
                 f"{self.base_url}/api/generate",
@@ -101,20 +101,20 @@ Answer concisely, using the context above."""
                 },
                 timeout=120
             )
-            
+
             if response.status_code != 200:
                 raise Exception(f"Ollama error: {response.text}")
-            
+
             result = response.json()
             generated_text = result.get("response", "").strip()
-            
+
             return {
                 "response": generated_text,
                 "model": self.model,
                 "context_chunks": num_context_chunks,
                 "status": "success"
             }
-            
+
         except requests.exceptions.ConnectionError:
             return {
                 "response": "ERROR: Cannot connect to Ollama. Ensure Ollama is running: ollama serve",
@@ -125,7 +125,7 @@ Answer concisely, using the context above."""
                 "response": f"ERROR: {str(e)}",
                 "status": "error"
             }
-    
+
     def generate_with_context_stream(self, question: str, context: str):
         """Same as generate_with_context but STREAMS the answer token-by-token.
         Yields text pieces as they are produced by Ollama. Uses the identical
@@ -177,34 +177,34 @@ Answer concisely, using the context above."""
         """
         Check if response contains potential hallucinations
         Uses heuristic analysis (word overlap, context grounding)
-        
+
         Args:
             response: Generated response
             context: Original context
-            
+
         Returns:
             Hallucination analysis (heuristic-based, not LLM-driven to avoid double calls)
         """
         # Heuristic-based hallucination detection (faster, no extra LLM call)
         response_lower = response.lower()
         context_lower = context.lower()
-        
+
         # Red flags
         has_uncertain_language = any(phrase in response_lower for phrase in [
             "i think", "probably", "might", "could be", "unclear", "ambiguous"
         ])
-        
+
         has_not_found = "not found" in response_lower or "unable to" in response_lower
-        
+
         # Check if response content appears in context
         response_words = set(response_lower.split())
         context_words = set(context_lower.split())
         overlap = len(response_words & context_words) / max(len(response_words), 1) if response_words else 0
-        
+
         # Hallucination likely if low overlap AND uncertain language AND not explicitly saying "not found"
         has_hallucination = (overlap < 0.3 and has_uncertain_language and not has_not_found)
         confidence = min(abs(overlap - 0.5), 1.0)  # Confidence peaks at extremes
-        
+
         return {
             "has_hallucination": has_hallucination,
             "confidence": confidence,
@@ -212,35 +212,35 @@ Answer concisely, using the context above."""
                 " (uncertain language detected)" if has_uncertain_language else ""
             )
         }
-    
+
     def calculate_relevance(self, response: str, question: str) -> float:
         """
         Calculate relevance score (0-1)
         Uses word overlap and semantic heuristics
-        
+
         Args:
             response: Generated response
             question: Original question
-            
+
         Returns:
             Relevance score 0-1
         """
         # Word overlap heuristic
         question_words = set(question.lower().split())
         response_words = set(response.lower().split())
-        
+
         if not question_words:
             return 0.0
-        
+
         overlap = len(question_words & response_words)
         relevance = min(overlap / max(len(question_words), 1), 1.0)
-        
+
         # Penalty for responses saying "not found"
         if "not found" in response.lower() or "unable" in response.lower():
             relevance *= 0.8
-        
+
         # Bonus for actually attempting an answer
         if len(response) > 50:  # Substantial response
             relevance = min(relevance + 0.1, 1.0)
-        
+
         return relevance
